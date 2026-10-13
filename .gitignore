@@ -1,0 +1,13 @@
+/.gradle/
+/build/
+/run/
+/libs/*.jar
+/.idea/
+*.iml
+__pycache__/
+*.pyc
+.env
+.env.*
+bec_hd.config
+*.hd.bak.*
+*.hd.new.*

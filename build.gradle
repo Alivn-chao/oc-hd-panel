@@ -1,0 +1,32 @@
+plugins {
+    id 'java-library'
+    id 'com.gtnewhorizons.retrofuturagradle' version '2.0.5'
+}
+group = 'dev.bec.hdpanel'
+version = '0.2.0-alpha2'
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+    withSourcesJar()
+}
+minecraft {
+    mcVersion = '1.7.10'
+    jvmLanguageVersion = JavaLanguageVersion.of(21)
+    javaCompatibilityVersion = 8
+}
+repositories {
+    mavenCentral()
+    maven { url = 'https://nexus.gtnewhorizons.com/repository/public/' }
+}
+dependencies {
+    compileOnly(rfg.deobf(project.files('libs/OpenComputers-1.12.61-GTNH.jar')))
+    testImplementation 'junit:junit:4.13.2'
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 8
+}
+tasks.named('decompileSrgJar') {
+    java17Launcher.set(javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) })
+}

@@ -1,0 +1,8 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://nexus.gtnewhorizons.com/repository/public/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = 'oc-hd-panel'
