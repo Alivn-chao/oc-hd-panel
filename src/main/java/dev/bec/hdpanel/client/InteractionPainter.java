@@ -24,8 +24,8 @@ public final class InteractionPainter {
     public static BufferedImage modal(PanelInteraction state) {
         BufferedImage image=new BufferedImage(720,400,BufferedImage.TYPE_INT_ARGB); Graphics2D g=graphics(image);
         g.setColor(Color.WHITE); g.fillRoundRect(0,0,720,400,24,24);
-        String[] names={"刷新数据","暂停服务","恢复 / 重试","处理样板","设置缓存目标"};
-        text(g,names[state.modal],28,48,24,INK,664);
+        String[] names={"刷新数据","暂停服务","恢复 / 重试","处理样板","设置缓存目标","确认操作"};
+        text(g,state.modal==5?state.customLabel:names[state.modal],28,48,24,INK,664);
         if(state.modal==4) {
             text(g,"默认补库目标 · mB  /  各流体的单独覆盖值保持不变",28,86,16,MUTED,664);
             button(g,28,116,200,"144,000 mB",true); button(g,244,116,200,"1,000,000 mB",true);
@@ -38,9 +38,9 @@ public final class InteractionPainter {
             text(g,state.editable?"默认目标须为正整数：1–2147483647 mB，单项覆盖值保持不变。":"当前只读或服务运行中：可预览输入，暂停后才能保存。",28,282,14,MUTED,664);
         } else {
             String[] detail={"请求下一份 OC 状态快照。","通过原控制器的 Q 入口暂停服务。","通过原控制器的恢复 / T 重试入口执行。","通过原控制器的 S 入口处理样板。"};
-            text(g,detail[state.modal],28,103,19,INK,664);
+            text(g,state.modal==5?state.customConfirm:detail[state.modal],28,103,19,INK,664);
             text(g,"提交后显示 OC 回执。机器执行结果请以运行状态与日志为准。",28,155,16,MUTED,664);
-            text(g,"此操作由现有 BEC 控制器处理。",28,193,16,MUTED,664);
+            text(g,state.modal==5?"操作事件会传给绑定此屏幕的自动化程序。":"此操作由现有 BEC 控制器处理。",28,193,16,MUTED,664);
         }
         text(g,state.notice,28,313,14,new Color(0xD47D38),664);
         button(g,420,338,124,"取消",true);

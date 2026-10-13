@@ -4,20 +4,25 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
+import cpw.mods.fml.common.network.ByteBufUtils;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.tileentity.TileEntity;
 
 public class ActionPacket implements IMessage {
     private int x, y, z, action, request, value;
+    private String widget="";
     public ActionPacket() { }
     public ActionPacket(PanelTile tile, int action, int request, int value) {
         x = tile.xCoord; y = tile.yCoord; z = tile.zCoord; this.action = action; this.request = request; this.value = value;
     }
+    public ActionPacket(PanelTile tile,int request,int value,String widget){this(tile,5,request,value);this.widget=widget;}
     @Override public void fromBytes(ByteBuf buf) {
         x = buf.readInt(); y = buf.readInt(); z = buf.readInt(); action = buf.readUnsignedByte(); request = buf.readInt(); value = buf.readInt();
+        widget=ByteBufUtils.readUTF8String(buf);if(widget.length()>32)throw new IllegalArgumentException("widget id too long");
     }
     @Override public void toBytes(ByteBuf buf) {
         buf.writeInt(x); buf.writeInt(y); buf.writeInt(z); buf.writeByte(action); buf.writeInt(request); buf.writeInt(value);
+        ByteBufUtils.writeUTF8String(buf,widget);
     }
     public static class Handler implements IMessageHandler<ActionPacket, IMessage> {
         @Override public IMessage onMessage(final ActionPacket message, final MessageContext context) {
@@ -25,11 +30,10 @@ public class ActionPacket implements IMessage {
                 @Override public void run() {
                     EntityPlayerMP player = context.getServerHandler().playerEntity;
                     if (player == null || player.playerNetServerHandler == null || !player.playerNetServerHandler.netManager.isChannelOpen()
-                        || message.action > 4 || message.request <= 0 || message.value < 0
+                        || message.action > 5 || message.request <= 0 || message.value < 0
                         || !player.worldObj.blockExists(message.x, message.y, message.z)) return;
-                    if (player.getDistanceSq(message.x + .5, message.y + .5, message.z + .5) > 64) return;
                     TileEntity tile = player.worldObj.getTileEntity(message.x, message.y, message.z);
-                    if (tile instanceof PanelTile) ((PanelTile) tile).action(player, message.action, message.request, message.value);
+                    if (tile instanceof PanelTile) ((PanelTile) tile).action(player, message.action, message.request, message.value,message.widget);
                 }
             });
             return null;

@@ -7,7 +7,7 @@ for path in (root / 'oc').glob('*.lua'):
     lua = LuaRuntime(unpack_returned_tuples=True)
     chunk, error = lua.eval('function(s) local f,e=load(s); return f,e end')(path.read_text(encoding='utf-8'))
     assert chunk is not None, (path, error)
-print('Both OC scripts compile in Lua')
+print('All OC scripts compile in Lua')
 
 source = (root / 'oc/bec_hd.lua').read_text(encoding='utf-8')
 harness = r'''

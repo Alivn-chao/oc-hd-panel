@@ -5,6 +5,7 @@ public final class PanelInteraction {
     public int modal=-1, cursor, request;
     public boolean selected, focused, editable;
     public String input="144000", notice="";
+    public String customLabel="",customConfirm="";
     public long deadline;
     public int version;
     public void open(int action, String target, boolean canEdit) {

@@ -2,11 +2,11 @@
   {
     "modid": "ochdpanel",
     "name": "OC HD Panel",
-    "description": "Client-rendered 720p BEC dashboard for OpenComputers.",
-    "version": "0.2.0-alpha2",
+    "description": "Reusable 720p OpenComputers screens with declarative Lua UI, screen walls and an optional BEC adapter.",
+    "version": "0.3.0-alpha3",
     "mcversion": "1.7.10",
     "authorList": [
-      "BEC HD Panel contributors"
+      "OC HD Panel contributors"
     ],
     "dependencies": [
       "OpenComputers"

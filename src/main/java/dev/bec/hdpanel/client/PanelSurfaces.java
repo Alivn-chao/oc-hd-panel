@@ -16,7 +16,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
-/** One shared texture per visible panel; a single bounded background rasterizer. */
+/** One shared texture per visible screen wall; a single bounded background rasterizer. */
 public final class PanelSurfaces {
     private static final Map<PanelTile, Surface> SURFACES = new LinkedHashMap<PanelTile, Surface>(16, .75F, true);
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
@@ -28,6 +28,7 @@ public final class PanelSurfaces {
     private PanelSurfaces() { }
     public static Surface get(PanelTile tile) { return get(tile, false); }
     public static Surface get(PanelTile tile, boolean gui) {
+        tile=tile.master();
         Surface s = SURFACES.get(tile);
         if (s == null) {
             if (SURFACES.size() >= 4) {
@@ -47,7 +48,7 @@ public final class PanelSurfaces {
         while (it.hasNext()) {
             Map.Entry<PanelTile, Surface> e = it.next(); PanelTile tile = e.getKey();
             if (mc.theWorld == null || tile.getWorldObj() != mc.theWorld || tile.isInvalid()
-                || mc.thePlayer == null || mc.thePlayer.getDistanceSq(tile.xCoord + .5, tile.yCoord + .5, tile.zCoord + .5) > 24 * 24) {
+                || mc.thePlayer == null || tile.master()!=tile || tile.distanceSq(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ) > 36 * 36) {
                 e.getValue().dispose(); it.remove();
             }
         }
@@ -62,10 +63,12 @@ public final class PanelSurfaces {
         public int page;
         public int scroll;
         private int lastPage=-1, lastScroll=-1;
+        private String lastApp="",lastLayout="";
         public String error = "";
         public ResourceLocation location() { return location; }
         private void refresh(final PanelTile tile, boolean gui) {
             lastUsed = System.currentTimeMillis();
+            if(!lastApp.equals(tile.app)||!lastLayout.equals(tile.layout)) {page=0;scroll=0;lastApp=tile.app;lastLayout=tile.layout;}
             if (pending != null && pending.isDone()) {
                 try {
                     BufferedImage image = pending.get();
@@ -86,10 +89,10 @@ public final class PanelSurfaces {
             long now = System.currentTimeMillis();
             boolean interaction=gui && (page!=lastPage || scroll!=lastScroll);
             if (pending != null || key.equals(scheduled) || now - submitted < (interaction?33:500)) return;
-            final String payload = tile.payload; final boolean online = tile.online; final int view = page, offset=scroll;
+            final String payload=tile.payload,app=tile.app,layout=tile.layout,values=tile.values;final boolean online=tile.online;final int view=page,offset=scroll;
             try {
                 pending = WORKER.submit(new java.util.concurrent.Callable<BufferedImage>() {
-                    @Override public BufferedImage call() { return DashboardPainter.paint(payload, online, view,offset); }
+                    @Override public BufferedImage call() { return "bec_dashboard".equals(app)?DashboardPainter.paint(payload,online,view,offset):AppPainter.paint(layout,values,online,view); }
                 });
                 scheduled = key; submitted = now; lastPage=page; lastScroll=scroll;
             } catch (RejectedExecutionException ignored) { }
