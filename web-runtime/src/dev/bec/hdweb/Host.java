@@ -28,9 +28,12 @@ public final class Host {
     private final WebCommandQueue inbox=new WebCommandQueue(128);
     private final AtomicBoolean capturePending=new AtomicBoolean();
     private WritableImage captureImage;
-    private final int[] capturePixels=new int[1920*1080];
+    private final ArrayBlockingQueue<int[]> pixelPool=new ArrayBlockingQueue<int[]>(2);
+    private final int[] previousPixels=new int[1920*1080];
+    private volatile boolean hasPrevious;private volatile int streamFps;private long lastCapture;
     private final ExecutorService encoder=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"OCHD-frame-encode");t.setDaemon(true);return t;});
     private static final int MAX_LINE=400000;
+    private Host(){pixelPool.add(new int[1920*1080]);pixelPool.add(new int[1920*1080]);}
     private static final String CSP="default-src 'none'; script-src 'unsafe-inline' data:; style-src 'unsafe-inline' data:; img-src data:; font-src data:; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
     private static final String SDK="(function(){var listeners=[],last=null,pending={},seq=1;window.__ochdData=function(d){last=d;listeners.forEach(function(f){try{f(d);}catch(e){}});};window.__ochdAck=function(a){var p=pending[a.request];if(p){delete pending[a.request];a.ok?p.resolve(a):p.reject(a);}};Object.defineProperty(window,'OC',{value:Object.freeze({onData:function(f){listeners.push(f);if(last!==null)f(last);},emit:function(name,args){return new Promise(function(resolve,reject){var id=(seq++%2147483646)+1;pending[id]={resolve:resolve,reject:reject};window.status=JSON.stringify({type:'event',request:id,event:name,args:args||{}});setTimeout(function(){if(pending[id]){delete pending[id];reject({ok:false,message:'OC response timeout'});}},12000);});}})});})();";
     private void send(int type,byte[] bytes)throws IOException{ synchronized(out){out.writeByte(type);out.writeInt(bytes.length);out.write(bytes);out.flush();} }
@@ -52,10 +55,16 @@ public final class Host {
         holder[0].setScene(scene);javax.swing.SwingUtilities.invokeLater(()->window.setVisible(true));view.requestFocus();
         javafx.animation.Timeline timer=new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.millis(8),e->{for(int i=0;i<8;i++){String line=inbox.poll();if(line==null)break;try{command(new JsonParser().parse(line).getAsJsonObject());}catch(Throwable ex){record("error",ex.getClass().getSimpleName()+": "+String.valueOf(ex.getMessage()));}}}));timer.setCycleCount(javafx.animation.Animation.INDEFINITE);timer.play();
         record("started","WebKit host ready");
+        new javafx.animation.AnimationTimer(){public void handle(long now){streamCapture(System.nanoTime());}}.start();
+    }
+    private void streamCapture(long now){
+        if(streamFps>0&&loaded&&!capturePending.get()&&!pixelPool.isEmpty()&&now-lastCapture>=1000000000L/streamFps-1000000L){lastCapture=now;snapshot();}
     }
     private void data(){if(loaded)engine.executeScript("window.__ochdData&&window.__ochdData(JSON.parse("+new JsonPrimitive(latest).toString()+"));");}
     private void snapshot(){
         if(!loaded||!capturePending.compareAndSet(false,true)){record("snapshot_done","");return;}
+        final int[] capturePixels=pixelPool.poll();
+        if(capturePixels==null){capturePending.set(false);record("snapshot_done","");return;}
         try{
             view.applyCss();view.layout();SnapshotParameters params=new SnapshotParameters();params.setTransform(new Scale(1.5,1.5));
             if(captureImage==null)captureImage=new WritableImage(1920,1080);
@@ -63,15 +72,22 @@ public final class Host {
             view.snapshot(result->{
                 try{
                     result.getImage().getPixelReader().getPixels(0,0,1920,1080,PixelFormat.getIntArgbInstance(),capturePixels,0,1920);
-                    encoder.execute(()->{try{send(3,WebFrameCodec.encode(capturePixels));}catch(Exception e){record("error","frame encode: "+e.getMessage());}finally{capturePending.set(false);record("snapshot_done","");}});
-                }catch(Exception e){capturePending.set(false);record("error",e.getMessage());record("snapshot_done","");}
+                    encoder.execute(()->{try{
+                        // Explicit snapshots always return a frame; streaming suppresses identical frames.
+                        if(streamFps==0||!hasPrevious||!Arrays.equals(capturePixels,previousPixels)){
+                            send(3,WebFrameCodec.encode(capturePixels));System.arraycopy(capturePixels,0,previousPixels,0,capturePixels.length);hasPrevious=true;
+                        }
+                    }catch(Exception e){record("error","frame encode: "+e.getMessage());}finally{pixelPool.offer(capturePixels);record("snapshot_done","");}});
+                }catch(Exception e){pixelPool.offer(capturePixels);record("error",e.getMessage());record("snapshot_done","");}
+                finally{capturePending.set(false);streamCapture(System.nanoTime());}
                 return null;
             },params,captureImage);
-        }catch(Exception e){capturePending.set(false);record("error",e.getMessage());record("snapshot_done","");}
+        }catch(Exception e){pixelPool.offer(capturePixels);capturePending.set(false);record("error",e.getMessage());record("snapshot_done","");}
     }
     private void command(JsonObject c)throws Exception{
         String type=c.get("type").getAsString();
-        if(type.equals("load")){loaded=false;engine.loadContent(document(c.getAsJsonObject("package")));}
+        if(type.equals("load")){loaded=false;hasPrevious=false;engine.loadContent(document(c.getAsJsonObject("package")));}
+        else if(type.equals("stream")){streamFps=Math.max(0,Math.min(60,c.get("fps").getAsInt()));}
         else if(type.equals("data")){latest=c.get("data").toString();data();}
         else if(type.equals("zoom")){double z=c.get("value").getAsDouble();if(Double.isFinite(z))view.setZoom(Math.max(.5,Math.min(2.5,z)));}
         else if(type.equals("snapshot"))snapshot();

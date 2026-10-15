@@ -1,16 +1,18 @@
-# OCHD HTML 应用原型 · 0.4.0-alpha5
+# OCHD HTML 应用原型 · 0.4.0-alpha7
+
+alpha7 的多能源供电及 alpha6 的刷新、亮度与开关行为见 [屏幕设置说明](DISPLAY_POWER.md)。alpha5 的 Lua 和页面包保持兼容。
 
 玩家可以上传自己制作的HTML/CSS/JavaScript页面包，网页接收OC数据、提交事件并接收Lua回执。它是通用接口，示例看板不写死在Java中。原有BEC页面、绑定草稿、1080p和墙体布局继续保留。
 
 ## 安装和第一次测试
 
-这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha5-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21 / 25** 已测运行时。
+这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha7-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21 / 25** 已测运行时。
 
 客户端下载 `ochd-html-client-win-x64.zip`，先把旧OCHD JAR移出mods，再将客户端包解压到游戏目录（有 `mods` 的那层）。包内同时包含新版JAR和浏览器运行时，得到：
 
 ```text
 游戏目录/
-  mods/oc-hd-panel-0.4.0-alpha5-html.jar
+  mods/oc-hd-panel-0.4.0-alpha7-html.jar
   ochd-web-runtime/
     host.jar
     lib/javafx-web.jar
@@ -22,7 +24,7 @@
 在游戏OC中执行：
 
 ```sh
-wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha5-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha7-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
 lua /home/ochd_install_web_demo.lua
 ```
 
@@ -108,7 +110,7 @@ panel.ack(requestId,true,'保存完成')
 
 - 浏览器、排版、JS、图表和画面生成在玩家客户端独立进程。服务器保存页面包、发布数据、验证事件；不会渲染网页。
 - 页面资源按内容版本单独分块下载，普通方块数据包只同步摘要和数据，不反复携带HTML。缓存最多8包约2MiB，在内存中；每面墙保留一份当前页面包到存档NBT。
-- **原型每客户端同时只运行一个网页视图。** 同一面墙共用一个纹理；普通观看最多2次/秒快照，打开交互页最多请求60次/秒，并且同时只等待一帧，实际帧率取决于客户端硬件。优先Direct3D并自动回退软件绘制；静态世界观看仍为2次/秒。
+- **原型每客户端同时只运行一个网页视图。** 同一面墙共用一个纹理；世界观看目标30帧/秒，打开交互页目标60帧/秒；浏览器连续产帧，最多两个可复用像素缓冲，静止画面不重复传输，实际帧率取决于客户端硬件。优先Direct3D并自动回退软件绘制；实际帧率由客户端硬件决定，OC数据提交仍受服务器节流限制。
 - 15秒未使用视图会关闭浏览器；运行时无响应约20秒关闭。尚未实现观看者订阅驱动的OC自动停采；Lua运行频率仍由作者负责。示例每秒一份OC自身指标。
 - 支持真实WebKit HTML/CSS/JS、输入、SVG、Canvas。不是完整Chrome：未承诺WebGL、音视频、开发者工具、所有现代CSS/JS特性。原生下拉弹出菜单、右键菜单、IME仍待单独适配/验收。原型禁止外网请求、弹窗、iframe、任意导航；页面资源和JS应随包提供，不引用CDN。
 - 只测试自己的或信任来源的页面。离屏进程、CSP和有限桥接减少耦合，并不等于浏览器漏洞的完整安全隔离。暂不提供公共页面商店、任意网站浏览或服务器向客户端分发可执行Java。

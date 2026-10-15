@@ -1,8 +1,10 @@
-# OCHD HTML 应用原型（开发分支）
+# OCHD HTML 屏幕 · alpha7
 
-新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21/25测试包，版本0.4.0-alpha5-html，尚未GTNH实机验收。
+新增：[RF/EU/OC/AE 供电、连续刷新与屏幕设置](docs/DISPLAY_POWER.md)。基于 `v0.4.0-alpha5-html`，顶部控件改为机壳同色深蓝灰。客户端与服务器需一起更新，客户端同时更新浏览器运行时。
 
-[下载HTML原型](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha5-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
+新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21/25测试包，当前源码版本0.4.0-alpha7-html，尚未GTNH实机验收。
+
+[下载 alpha7](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha7-html) · [原 alpha5](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha5-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
 
 ![真实WebKit离屏渲染，使用测试快照；不是游戏截图](docs/preview-html-app.png)
 

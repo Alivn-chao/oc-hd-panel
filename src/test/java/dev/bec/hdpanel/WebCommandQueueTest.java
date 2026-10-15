@@ -14,6 +14,11 @@ public class WebCommandQueueTest {
         assertEquals(9999,read(q).get("value").getAsInt());assertEquals("snapshot",read(q).get("type").getAsString());
         assertEquals("down",read(q).get("kind").getAsString());assertEquals("up",read(q).get("kind").getAsString());assertNull(q.poll());
     }
+    @Test public void switchingWorldAndGuiKeepsOnlyTheLatestStreamRate(){
+        WebCommandQueue q=new WebCommandQueue(8);
+        for(int i=0;i<1000;i++)assertTrue(q.offer(command("stream",null,i%2==0?30:60)));
+        assertEquals(1,q.size());assertEquals(60,read(q).get("value").getAsInt());
+    }
     @Test public void neverEvictsDiscreteKeysAndKeepsLatestData(){
         WebCommandQueue q=new WebCommandQueue(8);q.offer(command("data",null,1));q.offer(command("input","key",2));q.offer(command("data",null,3));
         assertEquals(2,q.size());assertEquals(2,read(q).get("value").getAsInt());assertEquals(3,read(q).get("value").getAsInt());

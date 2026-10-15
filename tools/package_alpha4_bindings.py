@@ -6,13 +6,14 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'libs/oc-hd-panel-0.3.0-alpha4.jar'
-COMPILED=ROOT/'build/libs/oc-hd-panel-0.4.0-alpha5-html.jar'
+COMPILED=ROOT/'build/libs/oc-hd-panel-0.4.0-alpha7-html.jar'
 OUT=ROOT/'build/distributions'
 EXPECTED='6ff5a5bd5a8d7caf0d544d29fb9a8140d3c241a165cea3efa9bb01cfb8578b69'
-VERSION='0.4.0-alpha5-html'
+VERSION='0.4.0-alpha7-html'
 
 def overlay(name):
-    stems=['WebViewport','WebFrameCodec','WebCommandQueue','ActionPacket','HdPanelMod','PanelModel','PanelTile','client/ClientProxy','client/DashboardPainter','client/PanelGui','client/BindingPainter','CommonProxy','WebAppModel','WebAssetRequest','WebAssetPacket','client/PanelRenderer','client/WebHostProcess','client/WebScreens','client/WebPanelGui']
+    if name in ["assets/ochdpanel/lang/zh_CN.lang","assets/ochdpanel/lang/en_US.lang"]:return True
+    stems=['PanelAEGrid','PanelBlock','PanelPower','PanelSettingsPacket','client/ScreenSettingsGui','WebViewport','WebFrameCodec','WebCommandQueue','ActionPacket','HdPanelMod','PanelModel','PanelTile','client/ClientProxy','client/DashboardPainter','client/PanelGui','client/BindingPainter','CommonProxy','WebAppModel','WebAssetRequest','WebAssetPacket','client/PanelRenderer','client/WebHostProcess','client/WebScreens','client/WebPanelGui']
     for stem in stems:
         p='dev/bec/hdpanel/'+stem
         if name==p+'.class'or name.startswith(p+'$'):return True
@@ -36,7 +37,7 @@ def main():
                     assert result.read(name)==base.read(name),'Changed alpha4 entry: '+name
                     preserved.append(name)
         evidence={'base_sha256':EXPECTED,'result_sha256':hashlib.sha256(output.read_bytes()).hexdigest(),
-            'version':VERSION,'replaced_or_added_classes':replaced,'unchanged_original_entries':preserved,'hardware_tested':False}
+            'version':VERSION,'replaced_or_added_entries':replaced,'unchanged_original_entries':preserved,'hardware_tested':False}
         (OUT/'alpha4-preservation.json').write_text(json.dumps(evidence,indent=2),encoding='utf-8')
     bundle=OUT/'oc-hd-panel-alpha4-bindings-test-package.zip'
     with zipfile.ZipFile(bundle,'w',zipfile.ZIP_DEFLATED)as z:

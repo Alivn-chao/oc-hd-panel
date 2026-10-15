@@ -18,7 +18,8 @@ public class ClientProxy extends CommonProxy {
         super.init();
         ClientRegistry.bindTileEntitySpecialRenderer(PanelTile.class, new PanelRenderer());
     }
-    @Override public void open(PanelTile tile) { Minecraft.getMinecraft().displayGuiScreen("web".equals(tile.master().app)?new WebPanelGui(tile):new PanelGui(tile)); }
+    @Override public void open(PanelTile tile) { if(!tile.displayActive()){openSettings(tile);return;}Minecraft.getMinecraft().displayGuiScreen("web".equals(tile.master().app)?new WebPanelGui(tile):new PanelGui(tile)); }
+    @Override public void openSettings(PanelTile tile){Minecraft.getMinecraft().displayGuiScreen(new ScreenSettingsGui(tile));}
     @SubscribeEvent public void clientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         ActionReplyPacket reply;
