@@ -21,8 +21,8 @@ public class PanelRenderer extends TileEntitySpecialRenderer {
             GL11.glRotatef(tile.getBlockMetadata() * 90, 0, 1, 0);
             GL11.glDisable(GL11.GL_LIGHTING); GL11.glDisable(GL11.GL_CULL_FACE);
             GL11.glEnable(GL11.GL_TEXTURE_2D); GL11.glColor4f(1, 1, 1, 1);
-            double left=tile.column==0?-.42:-.5,right=tile.column==tile.wallWidth-1?.42:.5;
-            double bottom=tile.row==0?-.42:-.5,top=tile.row==tile.wallHeight-1?.42:.5;
+            double left=tile.column==0?-.40625:-.5,right=tile.column==tile.wallWidth-1?.40625:.5;
+            double bottom=tile.row==0?-.40625:-.5,top=tile.row==tile.wallHeight-1?.40625:.5;
             GL11.glDisable(GL11.GL_TEXTURE_2D);
             Tessellator t = Tessellator.instance; t.startDrawingQuads();
             t.setBrightness(0xF000F0);

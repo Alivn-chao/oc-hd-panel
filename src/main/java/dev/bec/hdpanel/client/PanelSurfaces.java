@@ -73,7 +73,7 @@ public final class PanelSurfaces {
                 try {
                     BufferedImage image = pending.get();
                     if (texture == null) {
-                        texture = new DynamicTexture(DashboardPainter.WIDTH, DashboardPainter.HEIGHT);
+                        texture = new DynamicTexture(1920,1080);
                         location = Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("ochdpanel", texture);
                     }
                     image.getRGB(0, 0, image.getWidth(), image.getHeight(), texture.getTextureData(), 0, image.getWidth());

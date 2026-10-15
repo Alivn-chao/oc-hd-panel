@@ -20,7 +20,7 @@ public final class AppPainter {
     }
     public static BufferedImage paint(String layout,String values,boolean online,int page) {
         JsonObject root=AppModel.parse(layout);JsonArray pages=root.has("pages")?root.getAsJsonArray("pages"):new JsonArray();
-        BufferedImage image=new BufferedImage(1280,720,BufferedImage.TYPE_INT_ARGB);Graphics2D g=image.createGraphics();
+        BufferedImage image=new BufferedImage(1920,1080,BufferedImage.TYPE_INT_ARGB);Graphics2D g=image.createGraphics();g.scale(1.5,1.5);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setColor(new Color(0xEEF1F8));g.fillRect(0,0,1280,720);g.setColor(Color.WHITE);g.fillRect(0,0,1280,72);
         text(g,str(root,"title","OC 高清屏幕"),40,46,24,0x203252,240);
@@ -59,7 +59,7 @@ public final class AppPainter {
                 }
             }
         }
-        text(g,str(root,"subtitle",""),40,694,14,0x8290A7,1150);text(g,"OC HD PANEL  /  1280 × 720",40,713,10,0x8290A7,800);
+        text(g,str(root,"subtitle",""),40,694,14,0x8290A7,1150);text(g,"OC HD PANEL  /  1920 × 1080",40,713,10,0x8290A7,800);
         g.dispose();return image;
     }
 }

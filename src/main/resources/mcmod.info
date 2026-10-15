@@ -3,7 +3,7 @@
     "modid": "ochdpanel",
     "name": "OC HD Panel",
     "description": "Reusable 720p OpenComputers screens with declarative Lua UI, screen walls and an optional BEC adapter.",
-    "version": "0.3.0-alpha3",
+    "version": "0.3.1-alpha4-bindings",
     "mcversion": "1.7.10",
     "authorList": [
       "OC HD Panel contributors"

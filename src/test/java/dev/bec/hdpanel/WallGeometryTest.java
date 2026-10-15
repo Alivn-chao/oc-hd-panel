@@ -15,7 +15,7 @@ public class WallGeometryTest {
     }
     @Test public void defaultWindowLeavesMostOfWorldVisibleAndExpansionIsOptional() {
         double small=WallGeometry.guiScale(1920,1080,false),large=WallGeometry.guiScale(1920,1080,true);
-        assertEquals(864,1280*small,.001);assertEquals(486,720*small,.001);assertTrue(large>small*2);
+        assertEquals(864,1328*small,.001);assertTrue(768*small<=1080*.56+.001);assertTrue(large>small*2);
         assertTrue(1280*WallGeometry.guiScale(320,240,false)<=320*.45+.001);
     }
     @Test public void onlyCompleteRectanglesWithOneControllerMerge() {

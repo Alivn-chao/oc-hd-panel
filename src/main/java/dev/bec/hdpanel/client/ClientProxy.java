@@ -24,6 +24,8 @@ public class ClientProxy extends CommonProxy {
         while ((reply=replies.poll())!=null) {
             if (Minecraft.getMinecraft().currentScreen instanceof PanelGui)
                 ((PanelGui) Minecraft.getMinecraft().currentScreen).receive(reply);
+            else if(Minecraft.getMinecraft().currentScreen instanceof BindingGui)
+                ((BindingGui)Minecraft.getMinecraft().currentScreen).receive(reply);
         }
         if (++ticks % 40 == 0) PanelSurfaces.prune();
     }

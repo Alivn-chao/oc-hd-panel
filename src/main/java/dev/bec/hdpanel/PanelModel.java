@@ -28,6 +28,9 @@ public final class PanelModel {
             data.addProperty(key, number(input.get(key)));
         data.addProperty("controls", Boolean.TRUE.equals(input.get("controls")));
         data.addProperty("configEditable", Boolean.TRUE.equals(input.get("configEditable")));
+        data.addProperty("bindingEditable", Boolean.TRUE.equals(input.get("bindingEditable")));
+        data.add("bindings", BindingModel.normalize(input.get("bindings")));
+        data.addProperty("bindingRevision",text(input.get("bindingRevision"),16));
         JsonArray fluids = new JsonArray();
         Object source = input.get("fluids");
         if (source instanceof Map) {

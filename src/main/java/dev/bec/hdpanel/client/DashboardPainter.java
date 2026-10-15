@@ -12,7 +12,7 @@ import com.google.gson.JsonParser;
 
 /** Pure Java2D: executed by a bounded client worker, never on the server or GL thread. */
 public final class DashboardPainter {
-    public static final int WIDTH = 1280, HEIGHT = 720;
+    public static final int WIDTH = 1920, HEIGHT = 1080;
     private static final Color INK = new Color(0x203252), MUTED = new Color(0x8290A7), BLUE = new Color(0x6688FF);
     private DashboardPainter() { }
     private static String string(JsonObject obj, String key, String fallback) {
@@ -70,6 +70,7 @@ public final class DashboardPainter {
         try { data = new JsonParser().parse(payload).getAsJsonObject(); } catch (RuntimeException ignored) { data = new JsonObject(); }
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
+        g.scale(1.5,1.5);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setColor(new Color(0xEEF1F8)); g.fillRect(0, 0, WIDTH, HEIGHT);
@@ -136,7 +137,11 @@ public final class DashboardPainter {
             text(g,"保存到原有配置，新补库计划读取；未完成计划仍按原日志恢复。",64,476,16,MUTED,1000);
             g.setColor(BLUE); g.fillRoundRect(64,514,240,48,14,14);
             text(g,"编辑默认缓存目标",86,545,18,Color.WHITE,208);
-            text(g,online && data.has("configEditable") && data.get("configEditable").getAsBoolean()
+            if(data.has("bindings")&&data.getAsJsonArray("bindings").size()>0) {
+                g.setColor(BLUE);g.fillRoundRect(330,514,240,48,14,14);
+                text(g,"设备地址绑定",352,545,18,Color.WHITE,208);
+                text(g,"支持 Ctrl+V 粘贴",600,545,15,MUTED,500);
+            } else text(g,online && data.has("configEditable") && data.get("configEditable").getAsBoolean()
                 ? "服务已停止，可以保存" : "仅预览 · 当前不可保存",330,545,15,MUTED,800);
         }
         boolean controls = online && data.has("controls") && data.get("controls").getAsBoolean();
@@ -146,7 +151,7 @@ public final class DashboardPainter {
         button(g, 925, "处理样板", 0x6688FF, controls);
         button(g, 1030, "暂停", 0xEA708D, controls);
         button(g, 1135, "恢复", 0x22BDB8, controls);
-        text(g, "OC HD PANEL  /  1280 × 720", 40, 704, 11, MUTED, 800);
+        text(g, "OC HD PANEL  /  1920 × 1080", 40, 704, 11, MUTED, 800);
         g.dispose();
         return image;
     }

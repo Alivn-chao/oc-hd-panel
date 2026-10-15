@@ -4,7 +4,7 @@ package dev.bec.hdpanel;
 public final class WallGeometry {
     public final double left,bottom,width,height;
     public WallGeometry(int columns,int rows) {
-        double w=columns-.16,h=rows-.16;
+        double w=columns-.1875,h=rows-.1875;
         width=Math.min(w,h*16/9.0);height=width*9/16.0;
         left=(columns-width)/2;bottom=(rows-height)/2;
     }
@@ -14,6 +14,6 @@ public final class WallGeometry {
         return new double[]{l-column-.5,b-row-.5,r-column-.5,t-row-.5,(l-left)/width,1-(t-bottom)/height,(r-left)/width,1-(b-bottom)/height};
     }
     public static double guiScale(int width,int height,boolean expanded) {
-        return Math.max(.01,Math.min((expanded?width-16:width*.45)/1280.0,(expanded?height-32:height*.56)/720.0));
+        return Math.max(.01,Math.min((expanded?width-16:width*.45)/1328.0,(expanded?height-32:height*.56)/768.0));
     }
 }

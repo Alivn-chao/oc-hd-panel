@@ -1,12 +1,13 @@
-# 通用高清屏幕 API（alpha3）
+# 通用高清屏幕 API（alpha4绑定版）
 
-OC 组件类型 `hd_panel`，每个已拼接的完整矩形只有一个可见组件。最多 8×6 物理方块，共用 1280×720 画布。多个独立屏幕墙请用 `component.proxy(完整地址)`。
+OC组件类型`hd_panel`，每个已拼接矩形只有一个可见组件。最多8×6物理方块，共用1920×1080物理画布，Lua布局坐标仍为1280×720。多个独立屏幕墙请用`component.proxy(完整地址)`。
 
 ## 方法
 
 | 方法 | 返回与用途 |
 | --- | --- |
-| `getResolution()` | `1280,720`，画布像素大小 |
+| `getResolution()` | `1920,1080`，画布像素大小 |
+| `getUIResolution()` | `1280,720`，Lua布局逻辑坐标 |
 | `getWallSize()` | 列数、行数，物理屏幕墙大小 |
 | `setUI(layout)` | `true` 成功并绑定当前电脑；`false,"rate limited"` 频率受限；`nil,原因` 布局无效或已被其他电脑绑定 |
 | `updateUI(values)` | `true` 成功；`false,"rate limited"` 频率受限；未 setUI 或绑定冲突返回 `nil,原因` |

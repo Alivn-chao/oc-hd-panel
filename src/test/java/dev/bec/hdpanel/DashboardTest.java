@@ -13,9 +13,9 @@ public class DashboardTest {
         assertEquals(-1, DashboardPainter.actionAt(860, 610));
         assertEquals(-1, DashboardPainter.actionAt(919, 650));
     }
-    @Test public void malformedDataProducesA720pOfflineFrame() {
+    @Test public void malformedDataProducesA1080pOfflineFrame() {
         java.awt.image.BufferedImage image = DashboardPainter.paint("invalid-json", false, 0);
-        assertEquals(1280, image.getWidth()); assertEquals(720, image.getHeight());
+        assertEquals(1920, image.getWidth()); assertEquals(1080, image.getHeight());
         assertEquals(0xFFEEF1F8, image.getRGB(10, 710));
     }
 }

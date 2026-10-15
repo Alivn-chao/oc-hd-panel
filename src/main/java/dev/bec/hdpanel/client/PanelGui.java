@@ -24,12 +24,12 @@ public class PanelGui extends GuiScreen {
     private String statusKey="";
     private String parsedPayload;
     private JsonObject parsedData=new JsonObject();
-    private final ImageTexture modalTexture=new ImageTexture(), statusTexture=new ImageTexture();
+    private final ImageTexture modalTexture=new ImageTexture(), statusTexture=new ImageTexture(),frameTexture=new ImageTexture();
     public PanelGui(PanelTile tile) { this.tile = tile.master(); }
     private boolean bec() {return "bec_dashboard".equals(tile.app);}
     @Override public boolean doesGuiPauseGame() { return false; }
     @Override public void initGui() { Keyboard.enableRepeatEvents(true); }
-    @Override public void onGuiClosed() { Keyboard.enableRepeatEvents(false); modalTexture.dispose(); statusTexture.dispose(); }
+    @Override public void onGuiClosed() { Keyboard.enableRepeatEvents(false); modalTexture.dispose(); statusTexture.dispose();frameTexture.dispose();modalVersion=-1;statusKey=""; }
     private JsonObject data() {
         if(!tile.payload.equals(parsedPayload)) {
             parsedPayload=tile.payload;
@@ -79,7 +79,8 @@ public class PanelGui extends GuiScreen {
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS); GL11.glPushMatrix();
         GL11.glTranslatef(left,top,0); GL11.glScalef(viewWidth/1280F,viewHeight/720F,1);
         GL11.glDisable(GL11.GL_DEPTH_TEST); GL11.glDisable(GL11.GL_LIGHTING);
-        drawRect(-5,-5,1285,725,0xFF344354);drawRect(-2,-2,1282,722,0xFFACB8C7);
+        if(frameTexture.location==null)frameTexture.set(FramePainter.paint());
+        quad(frameTexture.location,-24,-24,1328,768);drawRect(0,0,1280,720,0xFF0B101A);
         if(surface.location()!=null) quad(surface.location(),0,0,1280,720);
         if(bec()&&surface.page==1) {
             int max=PanelInteraction.maxScroll(count),thumb=count>5?Math.max(30,270*5/count):270;
@@ -99,6 +100,9 @@ public class PanelGui extends GuiScreen {
             if(y>=15 && y<65 && x>=300 && x<924) { int tab=(x-300)/156; outline(300+tab*156,18,144,46); tooltip="点击切换页面"; }
             if(surface.page==0 && inside(x,y,798,565,422,38)) { outline(792,562,430,38); tooltip="查看全部库存，支持鼠标滚轮"; }
             if(surface.page==3 && inside(x,y,64,514,240,48)) { outline(64,514,240,48); tooltip="打开目标输入框；可选预设，也可输入整数"; }
+            if(surface.page==3&&inside(x,y,330,514,240,48)&&data().has("bindings")&&data().getAsJsonArray("bindings").size()>0) {
+                outline(330,514,240,48);tooltip="绑定组件地址，支持 Ctrl+V 粘贴";
+            }
             int action=DashboardPainter.actionAt(x,y);
             if(action>=0) {
                 int bx=action==0?820:action==3?925:action==1?1030:1135;
@@ -157,6 +161,9 @@ public class PanelGui extends GuiScreen {
         }
         if(yy>=15 && yy<65 && xx>=300 && xx<924) { surface.page=(xx-300)/156; return; }
         if(surface.page==0 && inside(xx,yy,798,565,422,38)) { surface.page=1; return; }
+        if(surface.page==3&&inside(xx,yy,330,514,240,48)&&ui.request==0&&data().has("bindings")&&data().getAsJsonArray("bindings").size()>0) {
+            mc.displayGuiScreen(new BindingGui(this,tile,data()));return;
+        }
         if(surface.page==1 && inside(xx,yy,1194,315,22,270)) { dragging=true; dragScroll(yy,surface); return; }
         if(surface.page==3 && inside(xx,yy,64,514,240,48)) {
             String target="144000";

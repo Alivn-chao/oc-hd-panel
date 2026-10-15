@@ -1,16 +1,18 @@
-# OC 高清屏幕 0.3.0-alpha3
+# OC 高清屏幕：alpha4 本地绑定
 
-[下载 Alpha 测试版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.0-alpha3) · [通用接口文档](docs/API.md) · [验证记录](docs/VALIDATION.md)
+新增：[本地地址绑定与 Ctrl+V 输入](docs/BINDINGS.md)，支持V2配置及V1高清监控连接。交付以用户提供的1080p alpha4为基准，保留已有修复；原公开alpha3下载继续保留。
+
+[下载 alpha4 绑定测试版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.1-alpha4-bindings) · [原 alpha3](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.0-alpha3) · [通用接口文档](docs/API.md)
 
 ![通用自动化示例，模拟数据](docs/preview-generic.png)
 
 面向 GTNH 2.9.0 beta3 / OpenComputers 1.12.61-GTNH 的通用高清屏幕附属模组。新放置的屏幕显示欢迎页；你的 OC Lua 程序定义页面、数据和按钮。可以制作电力、仓储、产线或其他自动化的控制台。BEC 页面是可选适配器。
 
-界面借鉴网页的卡片、标签、按钮和操作回执，客户端用 Java2D 绘制 1280×720 纹理。它是原生游戏方块与 GUI，不执行 HTML/CSS/JavaScript。
+界面借鉴网页的卡片、标签、按钮和操作回执，alpha4客户端用 Java2D 绘制1920×1080纹理，Lua布局仍使用1280×720逻辑坐标。它是原生游戏方块与GUI，不执行HTML/CSS/JavaScript。
 
 ## 安装与使用
 
-1. 关闭客户端和服务器，用 `oc-hd-panel-0.3.0-alpha3.jar` 替换旧版 jar，两端必须安装同一版本。
+1. 关闭客户端和服务器，用本版 `oc-hd-panel-0.3.1-alpha4-bindings.jar` 替换旧版jar，两端使用相同版本。绑定操作详见上方独立指南。
 2. 在 NEI 搜索“OC 高清面板”。临时测试配方：第一排 3 个玻璃，第二排 铁锭/红石/铁锭，第三排 3 个铁锭。
 3. 放置时正面朝向放置者。同朝向、同一平面、相邻的高清面板组成完整矩形后，约 20 个服务器 tick 内自动拼为一面屏幕墙；最大 8 列 × 6 行。建议先搭完整屏幕，再接入 OC 电脑并运行程序。
 4. 用 OC 线缆连接屏幕墙。拼接后只有一个可见的 `hd_panel` 组件。不要给同一面墙同时绑定多个程序或电脑；已分别绑定的屏幕不会直接合并。改变形状前先停止程序并 `release()`，完成后重新枚举组件地址。
@@ -19,7 +21,7 @@
 
 只有本模组新增的高清面板能互相拼接，不能与原版 OC 屏幕混拼。不完整矩形、超过尺寸上限、朝向不同或多个独立绑定者会保留为单屏；方块被拆除后会重新计算。原版 OC 屏幕与显卡仍按原来的方式工作。
 
-拼屏扩大的是世界中的物理显示面积，共用一张 1280×720 画布，按 16:9 等比居中显示；宽高比不同会留边。不是每加一块就增加一张 720p 图像。墙上直接右键打开 GUI，目前没有世界表面坐标触摸事件。
+拼屏扩大世界中的物理显示面积，共用一张1920×1080画布，按16:9等比居中；宽高比不同会留边，并不为每块各建一张图像。Lua逻辑坐标保持1280×720。墙上右键打开GUI，目前没有世界表面坐标触摸事件。
 
 ## 接入自己的自动化
 
@@ -100,7 +102,7 @@ lua /home/bec_hd.lua monitor 屏幕地址
 - 服务器同步有上限的布局和数值，不生成图像、不按像素发包。数据最多每 10 个服务器 tick 接受一次（20 TPS 时每秒 2 次），相同数据不重复同步。
 - 客户端单个后台线程绘制，任务队列容量 8；数据画面至少间隔 500ms，GUI 切页最快 33ms。悬停直接绘制边框，未变画面复用纹理。
 - 每面墙共用一张纹理，客户端最多缓存 4 面墙；超过容量的新墙暂不生成纹理，避免每帧分配和回收。世界显示距离上限 32 格，GUI 距墙超过 8 格关闭，卸载或远离时回收缓存。
-- 单张 RGBA 720p 纹理约 3.52 MiB，另有像素缓冲和临时绘制图像。单次点击墙级串行等待 OC 回执；服务器 160 tick / GUI 12 秒分别超时，低 TPS 时实际动作可能较晚发生。关闭 GUI 不撤销已提交请求。
+- 单张RGBA1080p纹理约7.91MiB，另有像素缓冲和临时绘制图像。单次点击墙级串行等待OC回执；服务器160tick/GUI12秒分别超时，低TPS时实际动作可能较晚发生。关闭GUI不撤销已提交请求。
 - 100 个服务器 tick 未收到更新（20 TPS 时 5 秒），应用显示离线、禁用按钮并保留最后数据。
 
 已完成编译、13 项 Java 测试及 Lua 模拟检查，真实游戏内拼接、事件路由、多人权限、区块卸载和 FPS/MSPT 尚未验证。本版为预发行 Alpha，不保证固定帧率。预览由实际绘图代码生成，使用演示数据，不是游戏截图。
@@ -113,6 +115,6 @@ JDK 25 运行 Gradle 9.4.1，JDK 21 编译为 Java 8 字节码（RFG 2.0.5 构�
 ./gradlew -Porg.gradle.java.installations.paths="/path/to/jdk21" test reobfJar
 ```
 
-安装 `build/libs/oc-hd-panel-0.3.0-alpha3.jar`，不要安装 `-dev.jar`。Python 安装 lupa 后运行 `tools/test_generic.py`、`tools/test_lua.py` 和 `tools/test_config.py`。`tools/GenericPreview.java` 使用实际 AppPainter 生成欢迎页和通用示例图片；`tools/Preview.java` 生成可选 BEC 示例。
+最终安装包由 `tools/package_alpha4_bindings.py` 生成到 `build/distributions/`，不要使用`-dev.jar`或跳过原包保留验证。Python测试另加`tools/test_bindings.py`。`tools/GenericPreview.java`和`tools/Preview.java`使用实际绘图代码生成预览；已有旧预览来自alpha3。
 
 中文字体优先使用系统微软雅黑，其他平台需提供支持中文的系统字体。公开仓库不包含原 BEC 控制器、OC 模组 jar 或服务器专用组件地址。

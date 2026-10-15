@@ -27,6 +27,8 @@ local function uuid(value)
 end
 assert(uuid(connection.node) and uuid(connection.field),"请填写完整的 BEC 节点 / 约束场组件地址")
 local node,field=connection.node,connection.field
+local bindings
+if filesystem.exists('/home/ochd_bindings.lua')then bindings=assert(loadfile('/home/ochd_bindings.lua'))()end
 local originalPull = event.pull
 local originalPrint = print
 local started, nextSnapshot = computer.uptime(), 0
@@ -148,6 +150,7 @@ local function publish(force)
     stage=tostring(record.stage or "尚无生产日志"), recipe="BEC 凝聚装配生产",
     mode=mode=="monitor" and "只读监控" or (active and "常驻服务" or "服务已停止，可恢复"),
     controls=mode~="monitor", configEditable=mode~="monitor" and not active,
+    bindingEditable=bindings~=nil and not active,bindingRevision=bindings and bindings.revision(configRaw)or '',bindings=bindings and bindings.v1Fields(connection)or {},
     configTarget=tonumber(config.target) or 144000, parallel=read(node, "getParallelRecipesInProgress") or 0,
     maxParallel=read(node,"getMaxParallel") or 0, naniteTier=type(tier)=="table" and tier.tier or 0,
     requiredTier=type(required)=="table" and required.tier or 0,
@@ -161,6 +164,13 @@ end
 local function action(e)
   if e[1] ~= "hd_panel_action" or e[2] ~= address then return e end
   if e[3] == "refresh" then nextSnapshot=0;reply(e,true,"已请求刷新，等待下一份数据");return {} end
+  if e[3]=='binding_save'then
+    if active or not bindings then reply(e,false,'先暂停服务，再保存高清监控绑定');return {}end
+    local ok,next,backup=pcall(bindings.saveV1,connection,e[7],e[5])
+    if ok then connection=next;configRaw=bindings.read('/home/bec_hd.config');node,field=connection.node,connection.field;nextSnapshot=0 end
+    reply(e,ok,ok and '高清监控地址已保存；生产控制器绑定保持原样' or tostring(next))
+    return {}
+  end
   if mode == "monitor" then reply(e,false,"只读监控拒绝控制操作");return {} end
   if e[3]=="cache_target" then
     if active then reply(e,false,"请先暂停原控制器，再保存目标");return {} end

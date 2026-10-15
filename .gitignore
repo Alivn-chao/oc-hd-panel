@@ -11,3 +11,4 @@ __pycache__/
 bec_hd.config
 *.hd.bak.*
 *.hd.new.*
+/build-tools/

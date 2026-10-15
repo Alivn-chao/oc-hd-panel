@@ -9,6 +9,7 @@ public final class InteractionPainter {
     private InteractionPainter() { }
     private static Graphics2D graphics(BufferedImage image) {
         Graphics2D g=image.createGraphics();
+        g.scale(1.5,1.5);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON); return g;
     }
@@ -22,7 +23,7 @@ public final class InteractionPainter {
         text(g,label,x+18,y+28,16,Color.WHITE,width-24);
     }
     public static BufferedImage modal(PanelInteraction state) {
-        BufferedImage image=new BufferedImage(720,400,BufferedImage.TYPE_INT_ARGB); Graphics2D g=graphics(image);
+        BufferedImage image=new BufferedImage(1080,600,BufferedImage.TYPE_INT_ARGB); Graphics2D g=graphics(image);
         g.setColor(Color.WHITE); g.fillRoundRect(0,0,720,400,24,24);
         String[] names={"刷新数据","暂停服务","恢复 / 重试","处理样板","设置缓存目标","确认操作"};
         text(g,state.modal==5?state.customLabel:names[state.modal],28,48,24,INK,664);
@@ -52,7 +53,7 @@ public final class InteractionPainter {
         g.setFont(new Font("Microsoft YaHei",Font.PLAIN,24)); int w=g.getFontMetrics().stringWidth(input); g.dispose(); return w;
     }
     public static BufferedImage status(String message, boolean pending) {
-        BufferedImage image=new BufferedImage(760,38,BufferedImage.TYPE_INT_ARGB); Graphics2D g=graphics(image);
+        BufferedImage image=new BufferedImage(1140,57,BufferedImage.TYPE_INT_ARGB); Graphics2D g=graphics(image);
         g.setColor(new Color(pending?0xE4EBFF:0xE4F3F0)); g.fillRoundRect(0,0,760,38,10,10);
         text(g,message,14,25,15,INK,730); g.dispose(); return image;
     }
