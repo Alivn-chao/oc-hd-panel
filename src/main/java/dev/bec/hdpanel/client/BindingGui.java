@@ -1,118 +1,120 @@
 package dev.bec.hdpanel.client;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import dev.bec.hdpanel.ActionPacket;
-import dev.bec.hdpanel.ActionReplyPacket;
-import dev.bec.hdpanel.BindingModel;
-import dev.bec.hdpanel.HdPanelMod;
-import dev.bec.hdpanel.PanelTile;
-import java.util.ArrayList;
-import java.util.List;
-import net.minecraft.client.gui.GuiButton;
+import com.google.gson.*;
+import dev.bec.hdpanel.*;
+import java.util.*;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
-/** Native text boxes provide Ctrl+V/Ctrl+A and caret navigation, including Unicode IME rules. */
+/** Embedded in the existing HD page; text boxes only provide native clipboard/caret editing. */
 public final class BindingGui extends GuiScreen {
     private final PanelGui parent;
     private final PanelTile tile;
     private final JsonArray fields;
-    private final String revision;
+    private String revision;
     private final List<String> values=new ArrayList<String>();
     private final List<GuiTextField> boxes=new ArrayList<GuiTextField>();
-    private final List<Integer> indices=new ArrayList<Integer>();
-    private int page,rows=1,request;
-    private long submitted;
-    private String notice="支持 Ctrl+V 粘贴、Ctrl+A 全选；保存不会启动机器";
+    private int page,request,focus=-1,dropdown=-1;
+    private long submitted,paintTick=-1;
+    private boolean dirty,redraw=true,draftPending;
+    private String notice="支持 Ctrl+V；未填完整可暂存，返回时自动暂存草稿";
+    private DynamicTexture texture;
+    private ResourceLocation location;
     public BindingGui(PanelGui parent,PanelTile tile,JsonObject data) {
         this.parent=parent;this.tile=tile;
-        revision=data.has("bindingRevision")?data.get("bindingRevision").getAsString():"";
+        revision=data.get("bindingRevision").getAsString();
         fields=new JsonParser().parse(data.getAsJsonArray("bindings").toString()).getAsJsonArray();
-        for(int i=0;i<fields.size();i++)values.add(fields.get(i).getAsJsonObject().get("value").getAsString());
+        for(JsonElement raw:fields)values.add(raw.getAsJsonObject().get("value").getAsString());
     }
-    @Override public boolean doesGuiPauseGame(){return false;}
-    private boolean editable() {
-        try {
-            JsonObject data=new JsonParser().parse(tile.payload).getAsJsonObject();
-            return tile.online&&data.has("bindingEditable")&&data.get("bindingEditable").getAsBoolean();
-        }catch(RuntimeException ignored){return false;}
-    }
-    private void remember() {
-        for(int i=0;i<boxes.size();i++)values.set(indices.get(i),boxes.get(i).getText().trim());
-    }
-    @Override public void initGui() {
-        remember();Keyboard.enableRepeatEvents(true);buttonList.clear();boxes.clear();indices.clear();
-        rows=Math.max(1,Math.min(8,(height-116)/34));page=Math.min(page,Math.max(0,(fields.size()-1)/rows));
-        int labelWidth=Math.min(170,width/3),x=labelWidth+12,w=Math.max(80,width-x-16);
-        for(int i=page*rows;i<Math.min(fields.size(),(page+1)*rows);i++) {
-            GuiTextField box=new GuiTextField(fontRendererObj,x,45+(i-page*rows)*34,w,20);
-            box.setMaxStringLength(160);box.setText(values.get(i));box.setFocused(false);boxes.add(box);indices.add(i);
+    private JsonObject data(){try{return new JsonParser().parse(tile.payload).getAsJsonObject();}catch(RuntimeException e){return new JsonObject();}}
+    private boolean allowed(boolean draft){JsonObject d=data();String key=draft?"bindingDraftEditable":"bindingEditable";return tile.online&&d.has(key)&&d.get(key).getAsBoolean();}
+    private void remember(){for(int i=0;i<boxes.size();i++)values.set(page*8+i,boxes.get(i).getText());}
+    @Override public void initGui(){
+        boxes.clear();focus=-1;dropdown=-1;
+        for(int i=page*8;i<Math.min(fields.size(),page*8+8);i++){
+            GuiTextField box=new GuiTextField(fontRendererObj,0,0,760,30);
+            box.setMaxStringLength(160);box.setText(values.get(i));box.setFocused(false);boxes.add(box);
         }
-        if(!boxes.isEmpty())boxes.get(0).setFocused(true);
-        int y=height-48;
-        buttonList.add(new GuiButton(0,12,y,66,20,"上一页"));
-        buttonList.add(new GuiButton(1,82,y,66,20,"下一页"));
-        buttonList.add(new GuiButton(2,width-156,y,68,20,"保存绑定"));
-        buttonList.add(new GuiButton(3,width-82,y,68,20,"返回"));
+        redraw=true;
     }
-    @Override public void onGuiClosed(){remember();Keyboard.enableRepeatEvents(false);}
-    @Override public void updateScreen() {
+    public void tick(){
         for(GuiTextField box:boxes)box.updateCursorCounter();
-        if(request!=0&&System.currentTimeMillis()-submitted>12000) {request=0;notice="未收到保存回执，请核对 OC 日志后再试";}
-        for(Object raw:buttonList) {
-            GuiButton b=(GuiButton)raw;
-            b.enabled=request==0&&(b.id!=0||page>0)&&(b.id!=1||(page+1)*rows<fields.size())&&(b.id!=2||editable());
+        if(request!=0&&System.currentTimeMillis()-submitted>12000){request=0;notice="未收到回执，草稿仍留在当前页面；请重试暂存";redraw=true;}
+    }
+    @Override public void drawScreen(int mouseX,int mouseY,float partial){
+        long blink=System.currentTimeMillis()/500;
+        if(redraw||blink!=paintTick){
+            remember();int cursor=focus>=0?boxes.get(focus).getCursorPosition():0;
+            int selection=focus>=0?boxes.get(focus).getSelectionEnd():0;
+            java.awt.image.BufferedImage image=BindingPainter.paint(fields,values,page,focus,cursor,selection,blink%2==0,dropdown,notice,request!=0);
+            if(texture==null){texture=new DynamicTexture(1920,1080);location=mc.getTextureManager().getDynamicTextureLocation("ochd-bindings-page",texture);}
+            image.getRGB(0,0,1920,1080,texture.getTextureData(),0,1920);texture.updateDynamicTexture();paintTick=blink;redraw=false;
         }
+        mc.getTextureManager().bindTexture(location);GL11.glColor4f(1,1,1,1);GL11.glEnable(GL11.GL_TEXTURE_2D);
+        Tessellator t=Tessellator.instance;t.startDrawingQuads();t.setColorOpaque_F(1,1,1);
+        t.addVertexWithUV(0,720,0,0,1);t.addVertexWithUV(1280,720,0,1,1);t.addVertexWithUV(1280,0,0,1,0);t.addVertexWithUV(0,0,0,0,0);t.draw();
     }
-    @Override public void drawScreen(int mouseX,int mouseY,float partial) {
-        drawDefaultBackground();
-        drawCenteredString(fontRendererObj,"OCHD · 设备地址绑定  "+(page+1)+" / "+Math.max(1,(fields.size()+rows-1)/rows),width/2,15,0xFFFFFF);
-        for(int i=0;i<boxes.size();i++) {
-            JsonObject field=fields.get(indices.get(i)).getAsJsonObject();
-            String label=fontRendererObj.trimStringToWidth(field.get("label").getAsString(),Math.min(170,width/3)-4);
-            drawString(fontRendererObj,label,10,51+i*34,0xD7E5EF);boxes.get(i).drawTextBox();
+    @Override protected void mouseClicked(int x,int y,int button){
+        if(button!=0||request!=0)return;
+        if(y>=15&&y<65&&x>=300&&x<924){parent.bindingTab((x-300)/156);return;}
+        if(y>=634&&y<674){
+            if(x>=40&&x<135&&page>0){remember();page--;initGui();return;}
+            if(x>=150&&x<245&&(page+1)*8<fields.size()){remember();page++;initGui();return;}
+            if(x>=790&&x<920){submit(true);return;}
+            if(x>=935&&x<1065){submit(false);return;}
+            if(x>=1080&&x<1230){parent.closeBindings();return;}
         }
-        String status=!editable()?"当前不能保存：停止生产后再绑定":notice;
-        drawString(fontRendererObj,fontRendererObj.trimStringToWidth(status,width-24),12,height-20,0xBDDCCF);
-        super.drawScreen(mouseX,mouseY,partial);
+        int row=(y-145)/48;
+        if(y<145||row<0||row>=boxes.size()||x<390||x>1215){dropdown=-1;return;}
+        JsonObject f=fields.get(page*8+row).getAsJsonObject();String kind=f.get("kind").getAsString();
+        if("side".equals(kind)){
+            focus=-1;for(GuiTextField b:boxes)b.setFocused(false);
+            if(dropdown==row){int selected=Math.max(0,Math.min(5,(x-390)/137));boxes.get(row).setText(Integer.toString(BindingPainter.SIDES[selected]));dirty=true;dropdown=-1;}
+            else dropdown=row;
+        }else{
+            dropdown=-1;for(GuiTextField b:boxes)b.setFocused(false);focus=row;boxes.get(row).setFocused(true);
+            boxes.get(row).setCursorPositionEnd();
+        }
+        remember();redraw=true;
     }
-    @Override protected void mouseClicked(int x,int y,int button) {
-        super.mouseClicked(x,y,button);for(GuiTextField box:boxes)box.mouseClicked(x,y,button);
-    }
-    @Override protected void keyTyped(char ch,int key) {
-        if(key==Keyboard.KEY_ESCAPE) {if(request==0)mc.displayGuiScreen(parent);return;}
+    @Override protected void keyTyped(char ch,int key){
+        if(key==Keyboard.KEY_ESCAPE){parent.closeBindings();return;}
         if(request!=0)return;
-        if(key==Keyboard.KEY_TAB&&!boxes.isEmpty()) {
-            int selected=-1;for(int i=0;i<boxes.size();i++)if(boxes.get(i).isFocused())selected=i;
-            for(GuiTextField box:boxes)box.setFocused(false);
-            boxes.get((selected+1)%boxes.size()).setFocused(true);return;
+        if(key==Keyboard.KEY_TAB&&!boxes.isEmpty()){
+            for(GuiTextField b:boxes)b.setFocused(false);focus=(focus+1)%boxes.size();boxes.get(focus).setFocused(true);dropdown=-1;redraw=true;return;
         }
-        for(GuiTextField box:boxes)if(box.isFocused()){box.textboxKeyTyped(ch,key);return;}
+        if(focus>=0&&!"side".equals(fields.get(page*8+focus).getAsJsonObject().get("kind").getAsString())){
+            String old=boxes.get(focus).getText();boxes.get(focus).textboxKeyTyped(ch,key);
+            if(!old.equals(boxes.get(focus).getText()))dirty=true;remember();redraw=true;
+        }
     }
-    @Override protected void actionPerformed(GuiButton b) {
-        if(request!=0)return;
-        if(b.id==3){mc.displayGuiScreen(parent);return;}
-        remember();
-        if(b.id==0||b.id==1){page+=b.id==0?-1:1;initGui();return;}
-        if(b.id!=2||!editable())return;
-        StringBuilder payload=new StringBuilder("_revision="+revision);
-        for(int i=0;i<fields.size();i++) {
+    private void submit(boolean draft){
+        if(request!=0||!allowed(draft)){notice="当前不能保存，请确认 OC 配置服务在线";redraw=true;return;}
+        remember();StringBuilder payload=new StringBuilder("_revision="+revision);
+        for(int i=0;i<fields.size();i++){
             JsonObject field=fields.get(i).getAsJsonObject();String value=values.get(i);
-            if(!BindingModel.valid(field.get("kind").getAsString(),value)) {
-                notice="格式不正确："+field.get("label").getAsString();page=i/rows;initGui();return;
+            if(!(draft?BindingModel.draftValue(field.get("kind").getAsString(),value):BindingModel.valid(field.get("kind").getAsString(),value))){
+                notice="格式未完成，请先暂存草稿："+field.get("label").getAsString();redraw=true;return;
             }
-            payload.append('\n');payload.append(field.get("key").getAsString()).append('=').append(value);
+            payload.append('\n').append(field.get("key").getAsString()).append('=').append(value);
         }
-        if(payload.length()>BindingModel.MAX_PAYLOAD){notice="绑定数据过大，未发送";return;}
-        if(!BindingModel.accepts(tile.payload,payload.toString())){notice="绑定字段已变化，请返回重新打开";return;}
-        request=new java.util.Random().nextInt(Integer.MAX_VALUE-1)+1;submitted=System.currentTimeMillis();
-        HdPanelMod.NETWORK.sendToServer(ActionPacket.bindings(tile,request,payload.toString()));notice="正在保存，等待 OC 回执…";
+        if(!BindingModel.accepts(tile.payload,payload.toString(),draft)){notice="页面版本已变化，请重新打开；当前输入尚在此页";redraw=true;return;}
+        request=new Random().nextInt(Integer.MAX_VALUE-1)+1;submitted=System.currentTimeMillis();draftPending=draft;
+        HdPanelMod.NETWORK.sendToServer(ActionPacket.bindings(tile,request,payload.toString(),draft));
+        notice=draft?"正在暂存草稿…":"正在校验并应用绑定…";redraw=true;
     }
-    public void receive(ActionReplyPacket reply) {
+    public void leave(){if(dirty&&request==0&&allowed(true))submit(true);dispose();}
+    public void dispose(){if(location!=null)mc.getTextureManager().deleteTexture(location);texture=null;location=null;redraw=true;}
+    public void receive(ActionReplyPacket reply){
         if(reply.x!=tile.xCoord||reply.y!=tile.yCoord||reply.z!=tile.zCoord||reply.request!=request)return;
-        notice=reply.message;if(reply.state!=0)request=0;
+        notice=reply.message;int mark=notice.indexOf("] ");
+        if(notice.startsWith("[rev:")&&mark>5){revision=notice.substring(5,mark);notice=notice.substring(mark+2);}
+        if(reply.state!=0){request=0;if(reply.state==1)dirty=false;}
+        redraw=true;
     }
 }

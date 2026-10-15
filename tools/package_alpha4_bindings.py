@@ -6,13 +6,13 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'libs/oc-hd-panel-0.3.0-alpha4.jar'
-COMPILED=ROOT/'build/libs/oc-hd-panel-0.3.1-alpha4-bindings.jar'
+COMPILED=ROOT/'build/libs/oc-hd-panel-0.3.2-alpha4-drafts.jar'
 OUT=ROOT/'build/distributions'
 EXPECTED='6ff5a5bd5a8d7caf0d544d29fb9a8140d3c241a165cea3efa9bb01cfb8578b69'
-VERSION='0.3.1-alpha4-bindings'
+VERSION='0.3.2-alpha4-drafts'
 
 def overlay(name):
-    stems=['ActionPacket','HdPanelMod','PanelModel','PanelTile','client/ClientProxy','client/DashboardPainter','client/PanelGui']
+    stems=['ActionPacket','HdPanelMod','PanelModel','PanelTile','client/ClientProxy','client/DashboardPainter','client/PanelGui','client/BindingPainter']
     for stem in stems:
         p='dev/bec/hdpanel/'+stem
         if name==p+'.class'or name.startswith(p+'$'):return True

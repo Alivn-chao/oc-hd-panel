@@ -9,22 +9,36 @@ assert(panel.setPage('bec_dashboard'),'屏幕仍由其他程序占用，请先�
 local path=C.path('config.dat');local expected=B.read(path)
 local cfg=C.read(path)or {version=2,mainInterface='',recipeDirectory='/home/bec_v2/recipes',cacheTarget=144000,
  groups={{name='公共设备组',storage='',gate='',subInterface='',transposer='',mainSide=4,subSide=5,generators={},bulkTransposers={},nanites={enabled=false,mode='cell-io'}}},nodes={}}
-local notice='打开设置页 → 设备地址绑定；支持 Ctrl+V 粘贴。保存不会启动生产。'
+local draftPath=C.path('bindings.draft.dat');local rawDraft=B.read(draftPath)
+local draft=rawDraft and require('serialization').unserialize(rawDraft)
+local function revision()return B.revision((expected or '')..'|'..(rawDraft or ''))end
+local notice='可随时暂存草稿，退出查地址后继续；方向可选择，蜂群统一ME-IO。'
 local nextPaint=0;local running=true
 local ok,err=xpcall(function()
  while running do
   if clock.uptime()>=nextPaint then
    local accepted,reason=panel.update({status='V2 设备配置',stage='setup-only',recipe='设置页 → 设备地址绑定',mode='配置模式',
-    controls=false,configEditable=false,bindingEditable=true,bindingRevision=B.revision(expected),bindings=B.v2Fields(cfg),logs={notice}})
+    controls=false,configEditable=false,bindingEditable=true,bindingDraftEditable=true,bindingRevision=revision(),bindings=B.draftFields(cfg,draft,expected),logs={notice}})
    assert(accepted~=nil,reason);nextPaint=clock.uptime()+(accepted and 2 or 0.6)
   end
   local e={event.pull(0.1)}
   if e[1]=='key_down'and(e[3]==113 or e[3]==81)then running=false end
   if e[1]=='hd_panel_action'and e[2]==address then
-   if e[3]=='binding_save'then
-    local success,result,backup=pcall(B.saveV2,C,cfg,e[7],e[5],expected)
-    if success then cfg=result;expected=B.read(path);notice='绑定配置已保存；退出配置页后再正常启动V2。'else notice=tostring(result)end
-    panel.ack(e[5],success,notice);nextPaint=clock.uptime()+0.6
+   if e[3]=='binding_save'or e[3]=='binding_draft'then
+    local applying=e[3]=='binding_save';local submittedRevision=revision()
+    local success,result=pcall(function()
+     rawDraft=B.saveDraft(C,cfg,e[7],e[5],expected,rawDraft,submittedRevision)
+     draft=require('serialization').unserialize(rawDraft)
+     if applying then
+      cfg=B.saveV2(C,cfg,e[7],e[5],expected,submittedRevision)
+      expected=B.read(path)
+      -- A completed binding has a new base; old draft is ignored until replaced.
+      notice='绑定已应用；退出配置页后再启动V2。'
+     else notice='草稿已暂存，可退出查地址，回来继续填写。'end
+    end)
+    if not success then notice=tostring(result)..'（已成功暂存的内容会保留）'end
+    -- Carry the new compare-and-swap revision in the acknowledgement.
+    panel.ack(e[5],success,'[rev:'..revision()..'] '..notice);nextPaint=0
    elseif e[3]=='refresh'then panel.ack(e[5],true,'配置页在线');nextPaint=clock.uptime()+0.6
    else panel.ack(e[5],false,'此页面只配置地址，不启动或控制生产')end
   end

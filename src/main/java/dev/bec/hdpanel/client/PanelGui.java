@@ -14,6 +14,9 @@ import java.awt.image.BufferedImage;
 
 public class PanelGui extends GuiScreen {
     private final PanelTile tile;
+    private BindingGui bindings,cachedBindings;
+    public void bindingTab(int page){closeBindings();PanelSurfaces.get(tile,true).page=page;}
+    public void closeBindings(){if(bindings!=null){bindings.leave();cachedBindings=bindings;bindings=null;}}
     private final PanelInteraction ui=new PanelInteraction();
     private int left, top, viewWidth, viewHeight, modalVersion=-1, caretWidth;
     private boolean dragging;
@@ -28,8 +31,8 @@ public class PanelGui extends GuiScreen {
     public PanelGui(PanelTile tile) { this.tile = tile.master(); }
     private boolean bec() {return "bec_dashboard".equals(tile.app);}
     @Override public boolean doesGuiPauseGame() { return false; }
-    @Override public void initGui() { Keyboard.enableRepeatEvents(true); }
-    @Override public void onGuiClosed() { Keyboard.enableRepeatEvents(false); modalTexture.dispose(); statusTexture.dispose();frameTexture.dispose();modalVersion=-1;statusKey=""; }
+    @Override public void initGui() { Keyboard.enableRepeatEvents(true);if(bindings!=null)bindings.setWorldAndResolution(mc,width,height); }
+    @Override public void onGuiClosed() { if(bindings!=null)bindings.leave();if(cachedBindings!=null)cachedBindings.dispose();Keyboard.enableRepeatEvents(false); modalTexture.dispose(); statusTexture.dispose();frameTexture.dispose();modalVersion=-1;statusKey=""; }
     private JsonObject data() {
         if(!tile.payload.equals(parsedPayload)) {
             parsedPayload=tile.payload;
@@ -82,6 +85,7 @@ public class PanelGui extends GuiScreen {
         if(frameTexture.location==null)frameTexture.set(FramePainter.paint());
         quad(frameTexture.location,-24,-24,1328,768);drawRect(0,0,1280,720,0xFF0B101A);
         if(surface.location()!=null) quad(surface.location(),0,0,1280,720);
+        if(bindings!=null){bindings.tick();bindings.drawScreen(x,y,partial);GL11.glPopMatrix();GL11.glPopAttrib();return;}
         if(bec()&&surface.page==1) {
             int max=PanelInteraction.maxScroll(count),thumb=count>5?Math.max(30,270*5/count):270;
             int position=315+(max>0?surface.scroll*(270-thumb)/max:0);
@@ -136,6 +140,7 @@ public class PanelGui extends GuiScreen {
     @Override protected void mouseClicked(int x,int y,int button) {
         if(button!=0 || viewWidth<=0) return;
         int xx=px(x),yy=py(y);
+        if(bindings!=null){bindings.mouseClicked(xx,yy,button);return;}
         if(ui.modal>=0) {
             int mx=xx-280,my=yy-160;
             if(inside(mx,my,420,338,124,42)) { ui.close(); return; }
@@ -162,7 +167,7 @@ public class PanelGui extends GuiScreen {
         if(yy>=15 && yy<65 && xx>=300 && xx<924) { surface.page=(xx-300)/156; return; }
         if(surface.page==0 && inside(xx,yy,798,565,422,38)) { surface.page=1; return; }
         if(surface.page==3&&inside(xx,yy,330,514,240,48)&&ui.request==0&&data().has("bindings")&&data().getAsJsonArray("bindings").size()>0) {
-            mc.displayGuiScreen(new BindingGui(this,tile,data()));return;
+            bindings=cachedBindings!=null?cachedBindings:new BindingGui(this,tile,data());bindings.setWorldAndResolution(mc,width,height);return;
         }
         if(surface.page==1 && inside(xx,yy,1194,315,22,270)) { dragging=true; dragScroll(yy,surface); return; }
         if(surface.page==3 && inside(xx,yy,64,514,240,48)) {
@@ -191,10 +196,11 @@ public class PanelGui extends GuiScreen {
         ui.pending(request,System.currentTimeMillis()); HdPanelMod.NETWORK.sendToServer(action==5?new ActionPacket(tile,request,value,customId):new ActionPacket(tile,action,request,value));
     }
     public void receive(ActionReplyPacket reply) {
+        if(bindings!=null)bindings.receive(reply);else if(cachedBindings!=null)cachedBindings.receive(reply);
         if(reply.x==tile.xCoord && reply.y==tile.yCoord && reply.z==tile.zCoord) ui.reply(reply.request,reply.state,reply.message);
     }
     @Override public void handleMouseInput() {
-        super.handleMouseInput(); int wheel=Mouse.getEventDWheel(); if(wheel==0 || ui.modal>=0) return;
+        super.handleMouseInput();if(bindings!=null)return; int wheel=Mouse.getEventDWheel(); if(wheel==0 || ui.modal>=0) return;
         int x=px(Mouse.getEventX()*width/mc.displayWidth),y=py(height-Mouse.getEventY()*height/mc.displayHeight-1);
         PanelSurfaces.Surface s=PanelSurfaces.get(tile,true);
         if(bec()&&s.page==1 && inside(x,y,40,260,1200,348)) s.scroll=PanelInteraction.scroll(s.scroll,wheel>0?-1:1,rows());
@@ -206,6 +212,7 @@ public class PanelGui extends GuiScreen {
     @Override protected void mouseClickMove(int x,int y,int button,long time) { if(dragging && button==0) dragScroll(py(y),PanelSurfaces.get(tile,true)); }
     @Override protected void mouseMovedOrUp(int x,int y,int button) { if(button==0) dragging=false; }
     @Override protected void keyTyped(char character,int key) {
+        if(bindings!=null){bindings.keyTyped(character,key);return;}
         if(key==Keyboard.KEY_F6&&ui.modal<0){expanded=!expanded;return;}
         if(ui.modal<0) { super.keyTyped(character,key); return; }
         if(key==Keyboard.KEY_ESCAPE) { ui.close(); return; }

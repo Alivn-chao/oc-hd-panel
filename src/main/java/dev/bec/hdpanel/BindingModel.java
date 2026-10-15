@@ -23,7 +23,11 @@ public final class BindingModel {
         if("path".equals(kind))return value.startsWith("/")&&!value.contains("..")&&value.matches("[a-zA-Z0-9_./-]+");
         return false;
     }
-    public static JsonArray normalize(Object input) {
+    public static boolean draftValue(String kind,String value) {
+        return kind.matches("uuid|side|integer|mode|path")&&value.length()<=160&&value.indexOf('\n')<0&&value.indexOf('\r')<0&&value.indexOf('=')<0;
+    }
+    public static JsonArray normalize(Object input) {return normalize(input,false);}
+    public static JsonArray normalize(Object input,boolean draft) {
         JsonArray fields=new JsonArray();Set<String> seen=new HashSet<String>();
         if(!(input instanceof Map))return fields;
         Map<?,?> rows=(Map<?,?>)input;
@@ -33,7 +37,7 @@ public final class BindingModel {
             Map<?,?> row=(Map<?,?>)raw;
             String key=PanelModel.text(row.get("key"),48),kind=PanelModel.text(row.get("kind"),12);
             String value=PanelModel.text(row.get("value"),160);
-            if(!key.matches("[a-zA-Z][a-zA-Z0-9_.-]{0,47}")||!seen.add(key)||!valid(kind,value))
+            if(!key.matches("[a-zA-Z][a-zA-Z0-9_.-]{0,47}")||!seen.add(key)||!(draft?draftValue(kind,value):valid(kind,value)))
                 throw new IllegalArgumentException("invalid binding field");
             JsonObject field=new JsonObject();field.addProperty("key",key);field.addProperty("kind",kind);
             field.addProperty("label",PanelModel.text(row.get("label"),64));field.addProperty("value",value);
@@ -41,11 +45,13 @@ public final class BindingModel {
         }
         return fields;
     }
-    public static boolean accepts(String snapshot,String payload) {
+    public static boolean accepts(String snapshot,String payload) {return accepts(snapshot,payload,false);}
+    public static boolean accepts(String snapshot,String payload,boolean draft) {
         if(payload==null||payload.length()>MAX_PAYLOAD)return false;
         try {
             JsonObject data=new JsonParser().parse(snapshot).getAsJsonObject();
-            if(!data.has("bindingEditable")||!data.get("bindingEditable").getAsBoolean())return false;
+            String permission=draft?"bindingDraftEditable":"bindingEditable";
+            if(!data.has(permission)||!data.get(permission).getAsBoolean())return false;
             JsonArray fields=data.getAsJsonArray("bindings");if(fields==null||fields.size()==0)return false;
             String[] lines=payload.split("\n",-1);if(lines.length!=fields.size()+1)return false;
             if(!data.has("bindingRevision")||!lines[0].equals("_revision="+data.get("bindingRevision").getAsString()))return false;
@@ -58,7 +64,7 @@ public final class BindingModel {
                 for(JsonElement e:fields) {
                     JsonObject field=e.getAsJsonObject();
                     if(field.get("key").getAsString().equals(key)) {
-                        if(!valid(field.get("kind").getAsString(),value))return false;
+                        if(!(draft?draftValue(field.get("kind").getAsString(),value):valid(field.get("kind").getAsString(),value)))return false;
                         found=true;break;
                     }
                 }

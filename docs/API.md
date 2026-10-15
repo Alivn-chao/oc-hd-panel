@@ -88,3 +88,7 @@ end
 ## 兼容的 BEC 模板
 
 `setPage("bec_dashboard")` / `update(data)` 保留 alpha2 模板接口，使用 `hd_panel_action`，动作名 `refresh/pause/resume/patterns/cache_target`，事件字段与回执编号相同。调用 BEC 接口会切换到 BEC 页面；调用 `setUI` 会切换到通用页面。新放置屏幕不会默认进入 BEC 模板。旧存档保留最后页面；可在绑定程序中调用 `clearUI()` 重置。
+
+### 绑定草稿
+
+BEC快照可含 `bindingEditable`、`bindingDraftEditable`、`bindingRevision` 与 `bindings`。绑定页嵌在现有设置UI，正式应用发 `binding_save`；暂存发 `binding_draft`，两者均为 `hd_panel_action,panel,action,player,request,0,payload`。payload是带 `_revision=` 的有界key=value数据，不能执行；草稿只放宽值格式，不放宽字段白名单、数量、长度、权限与版本检查。Lua仍须把草稿与生效配置分开，并在应用时校验机器。

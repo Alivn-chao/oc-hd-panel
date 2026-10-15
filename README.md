@@ -1,8 +1,8 @@
 # OC 高清屏幕：alpha4 本地绑定
 
-新增：[本地地址绑定与 Ctrl+V 输入](docs/BINDINGS.md)，支持V2配置及V1高清监控连接。交付以用户提供的1080p alpha4为基准，保留已有修复；原公开alpha3下载继续保留。
+新增：[页面内绑定、断点草稿与 Ctrl+V 输入](docs/BINDINGS.md)，支持V2配置及V1高清监控连接。交付以用户提供的1080p alpha4为基准，保留已有修复；原公开alpha3下载继续保留。
 
-[下载 alpha4 绑定测试版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.1-alpha4-bindings) · [原 alpha3](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.0-alpha3) · [通用接口文档](docs/API.md)
+[下载 alpha4 绑定测试版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts) · [原 alpha3](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.0-alpha3) · [通用接口文档](docs/API.md)
 
 ![通用自动化示例，模拟数据](docs/preview-generic.png)
 
@@ -118,3 +118,5 @@ JDK 25 运行 Gradle 9.4.1，JDK 21 编译为 Java 8 字节码（RFG 2.0.5 构�
 最终安装包由 `tools/package_alpha4_bindings.py` 生成到 `build/distributions/`，不要使用`-dev.jar`或跳过原包保留验证。Python测试另加`tools/test_bindings.py`。`tools/GenericPreview.java`和`tools/Preview.java`使用实际绘图代码生成预览；已有旧预览来自alpha3。
 
 中文字体优先使用系统微软雅黑，其他平台需提供支持中文的系统字体。公开仓库不包含原 BEC 控制器、OC 模组 jar 或服务器专用组件地址。
+
+![绑定页渲染预览：草稿与方向选择，非实机截图](docs/preview-bindings.png)

@@ -11,7 +11,7 @@ local function enc(v)
 end
 package.preload.serialization=function()return {serialize=function(v,pretty)assert(pretty==false);return enc(v)end,
  unserialize=function(s)return assert(load('return '..s,'data','t',{}))()end}end
-package.preload.filesystem=function()return {exists=function(p)return files[p]~=nil end,
+package.preload.filesystem=function()return {exists=function(p)return files[p]~=nil end,remove=function(p)files[p]=nil;return true end,
  rename=function(a,b)
   if failRename and a:find('.hd.new.',1,true)then return false end
   assert(files[a]and not files[b]);files[b]=files[a];files[a]=nil;return true
@@ -55,6 +55,68 @@ def fixture():
     return lua
 
 class BindingTests(unittest.TestCase):
+    def test_partial_draft_survives_reload_without_validating_or_changing_active_config(self):
+        lua=fixture()
+        lua.execute("""
+        for _,f in ipairs(fields)do if f.key=='n3.address'then f.value='01234'end;if f.key=='g1.storage'then f.value=''end end
+        raw=B.saveDraft(C,cfg,payload(fields,'123'),21,original,nil,'123')
+        record=require('serialization').unserialize(raw);reloaded=B.draftFields(cfg,record,original)
+        local found=false;for _,f in ipairs(reloaded)do if f.key=='n3.address'then assert(f.value=='01234');found=true end end
+        assert(found);assert(not validated);assert(files[C.path('config.dat')]==original)
+        """)
+
+    def test_draft_of_other_active_config_is_ignored(self):
+        lua=fixture();lua.execute("""
+        result=B.draftFields(cfg,{version=1,base='wrong',values={mainInterface='partial'}},original)
+        assert(result[1].value==cfg.mainInterface)
+        """)
+
+    def test_concurrent_draft_save_does_not_overwrite_first_writer(self):
+        lua=fixture();lua.execute("raw=B.saveDraft(C,cfg,data,21,original,nil,B.revision(original))")
+        with self.assertRaisesRegex(Exception,'其他程序修改'):
+            lua.execute('B.saveDraft(C,cfg,data,22,original,nil,B.revision(original))')
+        self.assertEqual(lua.globals().files['/home/bec_v2/bindings.draft.dat'],lua.globals().raw)
+
+    def test_drafts_keep_one_current_copy_without_backup_accumulation(self):
+        lua=fixture();lua.execute("""
+        local old
+        for i=1,6 do old=B.saveDraft(C,cfg,data,100+i,original,old,B.revision(original))end
+        local count=0;for path in pairs(files)do if path:find('bindings.draft.dat',1,true)then count=count+1 end end
+        assert(count==1)
+        """)
+
+    def test_v2_editor_only_offers_me_io_without_legacy_interface_fields(self):
+        lua=fixture();lua.execute("""
+        for _,f in ipairs(fields)do assert(not f.key:find('beeMode',1,true));assert(not f.key:find('supplyInterface',1,true));assert(not f.key:find('hatchSide',1,true))end
+        """)
+
+    def test_failed_apply_persists_draft_and_acknowledges_new_revision(self):
+        lua=fixture()
+        lua.execute(r'''
+        now=0;updates=0;actions=0
+        C.validate=function()error('还有未填写设备')end
+        package.preload.computer=function()return {uptime=function()return now end}end
+        package.preload.event=function()return {pull=function(dt)
+         now=now+dt;actions=actions+1
+         if actions==1 then
+          for _,f in ipairs(snapshot.bindings)do if f.key=='g1.storage'then f.value=''end end
+          return 'hd_panel_action','panel','binding_save','player',777,0,payload(snapshot.bindings,snapshot.bindingRevision)
+         end
+         return 'key_down','keyboard',113,16
+        end}end
+        local c=require('component');c.list=function()local once=true;return function()if once then once=false;return 'panel'end end end
+        c.proxy=function()return {setPage=function()return true end,update=function(v)snapshot=v;updates=updates+1;return true end,
+         ack=function(id,ok,message)assert(id==777 and not ok);assert(message:match('^%[rev:%d+%]'));acked=true end,release=function()end}end
+        loadfile=function(p)
+         if p=='/home/bec_v2/lib/config.lua'then return function()return C end end
+         assert(p=='/home/ochd_bindings.lua');return function()return B end
+        end
+        ''')
+        lua.execute((Path(__file__).resolve().parents[1]/'oc/bec_v2_setup_hd.lua').read_text(encoding='utf-8'))
+        self.assertTrue(lua.globals().acked)
+        self.assertEqual(lua.globals().files['/home/bec_v2/config.dat'],lua.globals().original)
+        self.assertEqual(lua.eval("C.read(C.path('bindings.draft.dat')).values['g1.storage']"),'')
+
     def test_v2_roundtrip_preserves_holes_zero_direction_and_cell_io(self):
         lua=fixture();lua.execute('new=B.applyV2(cfg,data,B.revision(original))')
         self.assertEqual(lua.eval('new.nodes[1].slot'),3)

@@ -162,7 +162,7 @@ public class PanelTile extends TileEntityEnvironment {
         }
     }
     public void action(EntityPlayerMP player, int action, int request, int value,String widget) {
-        if (worldObj.isRemote || action < 0 || action > 6 || request<=0 || value<0 || master()!=this) return;
+        if (worldObj.isRemote || action < 0 || action > 7 || request<=0 || value<0 || master()!=this) return;
         if (!online || controller==null) { reply(player, request, 2, "面板离线，无法提交"); return; }
         if (distanceSq(player.posX,player.posY,player.posZ) > 64
                 || !controller.canInteract(player.getCommandSenderName())) {
@@ -170,15 +170,15 @@ public class PanelTile extends TileEntityEnvironment {
         }
         if(action==5&&(!"custom".equals(app)||!AppModel.actionable(layout,values,widget,value))) {reply(player,request,2,"控件已禁用或不存在");return;}
         if(action<5&&!"bec_dashboard".equals(app)){reply(player,request,2,"当前应用不接受此操作");return;}
-        if(action==6&&(!"bec_dashboard".equals(app)||!BindingModel.accepts(payload,widget))) {
+        if(action>=6&&(!"bec_dashboard".equals(app)||!BindingModel.accepts(payload,widget,action==7))) {
             reply(player,request,2,"绑定字段无效或当前不允许保存");return;
         }
         long now = worldObj.getTotalWorldTime();
         if (pendingRequest!=0 || now - lastClick < 5) { reply(player, request, 2, "面板正在处理请求，请稍后再试"); return; }
         lastClick = now;
         pendingRequest=request; pendingPlayer=player; pendingSince=now;
-        String[] actions = {"refresh", "pause", "resume", "patterns", "cache_target","", "binding_save"};
-        if (!controller.signal(action==5?"hd_panel_event":"hd_panel_action", node.address(), action==5?widget:actions[action], player.getCommandSenderName(), request, value,action==6?widget:""))
+        String[] actions = {"refresh", "pause", "resume", "patterns", "cache_target","", "binding_save", "binding_draft"};
+        if (!controller.signal(action==5?"hd_panel_event":"hd_panel_action", node.address(), action==5?widget:actions[action], player.getCommandSenderName(), request, value,action>=6?widget:""))
             finish(false, "OC 事件队列未接受请求");
         else reply(player, request, 0, "请求已送达 OC，等待处理回执…");
     }

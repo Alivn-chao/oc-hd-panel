@@ -42,4 +42,19 @@ public class BindingModelTest {
     @Test public void oversizedPayloadIsRejectedBeforeParsing() {
         assertFalse(BindingModel.accepts(snapshot().toString(),new String(new char[BindingModel.MAX_PAYLOAD+1])));
     }
+    @Test public void incompleteDraftRequiresSeparatePermissionAndCannotBeApplied() {
+        JsonObject data=snapshot();String partial="_revision=123\nn1.address=01234";
+        assertFalse(BindingModel.accepts(data.toString(),partial,true));
+        data.addProperty("bindingDraftEditable",true);
+        assertTrue(BindingModel.accepts(data.toString(),partial,true));
+        assertFalse(BindingModel.accepts(data.toString(),partial));
+        assertFalse(BindingModel.accepts(data.toString(),"_revision=122\nn1.address=01234",true));
+        assertFalse(BindingModel.accepts(data.toString(),partial+"\nunknown=x",true));
+    }
+    @Test public void draftMetadataAllowsPartialTextButRejectsStructureInjection() {
+        assertTrue(BindingModel.draftValue("uuid","0123"));
+        assertTrue(BindingModel.draftValue("side",""));
+        assertFalse(BindingModel.draftValue("uuid","x\nunknown=y"));
+        assertFalse(BindingModel.draftValue("unknown",""));
+    }
 }

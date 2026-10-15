@@ -11,7 +11,7 @@ function M.revision(text)
  local a,b=1,0;for i=1,#(text or '')do a=(a+text:byte(i))%65521;b=(b+a)%65521 end
  return string.format('%.0f',b*65536+a)
 end
-function M.parse(payload,fields,revision)
+function M.parse(payload,fields,revision,draft)
  assert(type(payload)=='string'and #payload<=32768,'绑定数据过大')
  if revision then
   local base,rest=payload:match('^_revision=(%d+)\n(.*)$')
@@ -24,7 +24,7 @@ function M.parse(payload,fields,revision)
   assert(key and specs[key]and values[key]==nil and #v<=160,'字段未知、重复或格式不正确')
   assert(not v:find('[\r\n=]'),'字段不能包含换行或等号')
   local kind=specs[key]
-  if v~=''then
+  if v~=''and not draft then
    if kind=='uuid'then assert(uuid(v),'请输入完整组件地址：'..key)
    elseif kind=='path'then assert(v:match('^/[%w_./-]+$')and not v:find('..',1,true),'目录格式不正确')
    elseif kind=='mode'then assert(v=='cell-io'or v=='me-interface','蜂群模式不正确')
@@ -81,13 +81,11 @@ function M.v2Fields(cfg)
   for j=1,math.max(4,#g.generators)do field(out,prefix..'generator'..j,title..'纠缠器'..j..'（多余可空）',g.generators[j])end
   for j=1,math.max(5,#(g.bulkTransposers or {}))do field(out,prefix..'bulk'..j,title..'高速供液口'..j..'（可空）',(g.bulkTransposers or {})[j])end
   local n=g.nanites or {}
-  field(out,prefix..'beeMode',title..'蜂群模式',n.mode or 'cell-io','mode')
-  for _,key in ipairs({'transposer','loadRedstone','returnRedstone','supplyInterface','hatchInterface'})do
-   local label=({transposer='转运器',loadRedstone='装入红石',returnRedstone='回收红石',supplyInterface='备用ME接口（旧模式）',hatchInterface='收容ME接口（旧模式）'})[key]
-   field(out,prefix..'bee_'..key,title..'蜂群 · '..label,n[key])
+  for _,row in ipairs({{'transposer','转运器'},{'loadRedstone','装入红石'},{'returnRedstone','回收红石'}})do
+   field(out,prefix..'bee_'..row[1],title..'蜂群 · '..row[2],n[row[1]])
   end
-  for _,row in ipairs({{'bankSide',0},{'loadSide',3},{'returnSide',2},{'loadOutputSide',0},{'returnOutputSide',0},{'supplySide',2},{'hatchSide',4}})do
-   field(out,prefix..'bee_'..row[1],title..'蜂群 · '..row[1],n[row[1]]or row[2],'side')
+  for _,row in ipairs({{'bankSide',0,'箱子方向'},{'loadSide',3,'装入端口方向'},{'returnSide',2,'回收端口方向'},{'loadOutputSide',0,'装入红石输出方向'},{'returnOutputSide',0,'回收红石输出方向'}})do
+   field(out,prefix..'bee_'..row[1],title..'蜂群 · '..row[3],n[row[1]]or row[2],'side')
   end
  end
  local slots={};for i,n in ipairs(cfg.nodes)do slots[n.slot or i]=n end
@@ -111,9 +109,9 @@ function M.applyV2(cfg,payload,revision)
   g.mainSide=tonumber(values[p..'mainSide']);g.subSide=tonumber(values[p..'subSide'])
   g.generators={};for j=1,math.max(4,#cfg.groups[i].generators)do local v=values[p..'generator'..j];if v~=''then g.generators[#g.generators+1]=v end end
   g.bulkTransposers={};for j=1,math.max(5,#(cfg.groups[i].bulkTransposers or {}))do local v=values[p..'bulk'..j];if v~=''then g.bulkTransposers[#g.bulkTransposers+1]=v end end
-  local n={mode=values[p..'beeMode']};g.nanites=n
-  for _,key in ipairs({'transposer','loadRedstone','returnRedstone','supplyInterface','hatchInterface'})do n[key]=values[p..'bee_'..key]~=''and values[p..'bee_'..key]or nil end
-  for _,key in ipairs({'bankSide','loadSide','returnSide','loadOutputSide','returnOutputSide','supplySide','hatchSide'})do n[key]=tonumber(values[p..'bee_'..key])end
+  local n={mode='cell-io'};g.nanites=n
+  for _,key in ipairs({'transposer','loadRedstone','returnRedstone'})do n[key]=values[p..'bee_'..key]~=''and values[p..'bee_'..key]or nil end
+  for _,key in ipairs({'bankSide','loadSide','returnSide','loadOutputSide','returnOutputSide'})do n[key]=tonumber(values[p..'bee_'..key])end
   n.enabled=n.transposer~=nil
   assert(n.enabled or not(n.loadRedstone or n.returnRedstone or n.supplyInterface or n.hatchInterface),'蜂群设备需完整填写或一起留空')
  end
@@ -132,7 +130,7 @@ function M.applyV2(cfg,payload,revision)
  end
  return next
 end
-function M.saveV2(C,cfg,payload,request,expected)
+function M.saveV2(C,cfg,payload,request,expected,revision)
  local function unfinished()
   for i in ipairs(cfg.nodes)do
    local r=C.read(C.path('state/node-'..i..'/production.journal'))
@@ -150,13 +148,32 @@ function M.saveV2(C,cfg,payload,request,expected)
  unfinished()
  for _,n in ipairs(cfg.nodes)do assert(c.invoke(n.address,'getState')~='crafting','旧绑定仍在生产，先退出控制器')end
  for _,g in ipairs(cfg.groups)do for _,a in ipairs(g.generators)do assert(c.invoke(a,'isWorkAllowed')==false and c.invoke(a,'isMachineActive')==false,'原绑定纠缠器须先停止活动')end end
- local next=M.applyV2(cfg,payload,M.revision(expected));C.validate(next,true)
+ local next=M.applyV2(cfg,payload,revision or M.revision(expected));C.validate(next,true)
  for _,n in ipairs(next.nodes)do
   local state=c.invoke(n.address,'getState')
   assert(state=='idle'or(state=='paused-immediate'or state=='nanite-tier-too-low')and c.invoke(n.redstone,'getOutput',n.pauseSide)==15,'先停止生产再改绑定')
  end
  for _,g in ipairs(next.groups)do for _,a in ipairs(g.generators)do assert(c.invoke(a,'isWorkAllowed')==false and c.invoke(a,'isMachineActive')==false,'纠缠器须先停止活动')end end
  unfinished();return next,M.commit(C.path('config.dat'),next,expected,request)
+end
+-- Drafts preserve raw incomplete input without touching active config or hardware.
+function M.draftFields(cfg,record,expected)
+ local fields=M.v2Fields(cfg)
+ if type(record)=='table'and record.version==1 and record.base==M.revision(expected)and type(record.values)=='table'then
+  for _,f in ipairs(fields)do
+   local value=record.values[f.key]
+   if type(value)=='string'and #value<=160 and not value:find('[\r\n=]')then f.value=value end
+  end
+ end
+ return fields
+end
+function M.saveDraft(C,cfg,payload,request,expected,rawDraft,revision)
+ assert(read(C.path('config.dat'))==expected,'正式配置已变化，请重新打开')
+ local values=M.parse(payload,M.v2Fields(cfg),revision,true)
+ local path=C.path('bindings.draft.dat')
+ local backup=M.commit(path,{version=1,base=M.revision(expected),values=values},rawDraft,request)
+ if backup then fs.remove(backup)end
+ return read(path)
 end
 M.read=read
 return M
@@ -171,22 +188,36 @@ assert(panel.setPage('bec_dashboard'),'屏幕仍由其他程序占用，请先�
 local path=C.path('config.dat');local expected=B.read(path)
 local cfg=C.read(path)or {version=2,mainInterface='',recipeDirectory='/home/bec_v2/recipes',cacheTarget=144000,
  groups={{name='公共设备组',storage='',gate='',subInterface='',transposer='',mainSide=4,subSide=5,generators={},bulkTransposers={},nanites={enabled=false,mode='cell-io'}}},nodes={}}
-local notice='打开设置页 → 设备地址绑定；支持 Ctrl+V 粘贴。保存不会启动生产。'
+local draftPath=C.path('bindings.draft.dat');local rawDraft=B.read(draftPath)
+local draft=rawDraft and require('serialization').unserialize(rawDraft)
+local function revision()return B.revision((expected or '')..'|'..(rawDraft or ''))end
+local notice='可随时暂存草稿，退出查地址后继续；方向可选择，蜂群统一ME-IO。'
 local nextPaint=0;local running=true
 local ok,err=xpcall(function()
  while running do
   if clock.uptime()>=nextPaint then
    local accepted,reason=panel.update({status='V2 设备配置',stage='setup-only',recipe='设置页 → 设备地址绑定',mode='配置模式',
-    controls=false,configEditable=false,bindingEditable=true,bindingRevision=B.revision(expected),bindings=B.v2Fields(cfg),logs={notice}})
+    controls=false,configEditable=false,bindingEditable=true,bindingDraftEditable=true,bindingRevision=revision(),bindings=B.draftFields(cfg,draft,expected),logs={notice}})
    assert(accepted~=nil,reason);nextPaint=clock.uptime()+(accepted and 2 or 0.6)
   end
   local e={event.pull(0.1)}
   if e[1]=='key_down'and(e[3]==113 or e[3]==81)then running=false end
   if e[1]=='hd_panel_action'and e[2]==address then
-   if e[3]=='binding_save'then
-    local success,result,backup=pcall(B.saveV2,C,cfg,e[7],e[5],expected)
-    if success then cfg=result;expected=B.read(path);notice='绑定配置已保存；退出配置页后再正常启动V2。'else notice=tostring(result)end
-    panel.ack(e[5],success,notice);nextPaint=clock.uptime()+0.6
+   if e[3]=='binding_save'or e[3]=='binding_draft'then
+    local applying=e[3]=='binding_save';local submittedRevision=revision()
+    local success,result=pcall(function()
+     rawDraft=B.saveDraft(C,cfg,e[7],e[5],expected,rawDraft,submittedRevision)
+     draft=require('serialization').unserialize(rawDraft)
+     if applying then
+      cfg=B.saveV2(C,cfg,e[7],e[5],expected,submittedRevision)
+      expected=B.read(path)
+      -- A completed binding has a new base; old draft is ignored until replaced.
+      notice='绑定已应用；退出配置页后再启动V2。'
+     else notice='草稿已暂存，可退出查地址，回来继续填写。'end
+    end)
+    if not success then notice=tostring(result)..'（已成功暂存的内容会保留）'end
+    -- Carry the new compare-and-swap revision in the acknowledgement.
+    panel.ack(e[5],success,'[rev:'..revision()..'] '..notice);nextPaint=0
    elseif e[3]=='refresh'then panel.ack(e[5],true,'配置页在线');nextPaint=clock.uptime()+0.6
    else panel.ack(e[5],false,'此页面只配置地址，不启动或控制生产')end
   end
@@ -452,6 +483,6 @@ if not ok then
  error('Installation failed; original scripts restored: '..tostring(err))
 end
 print('INSTALLED: OCHD binding scripts. No configuration, recipe or production journal changed.')
-print('Requires matching 0.3.1-alpha4-bindings mod on BOTH client and server.')
+print('Requires matching 0.3.2-alpha4-drafts mod on BOTH client and server.')
 print('V2 setup page: lua /home/bec_v2_setup_hd.lua')
 print('V1 monitoring bindings: lua /home/bec_hd.lua monitor')

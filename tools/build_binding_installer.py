@@ -39,7 +39,7 @@ if not ok then
  error('Installation failed; original scripts restored: '..tostring(err))
 end
 print('INSTALLED: OCHD binding scripts. No configuration, recipe or production journal changed.')
-print('Requires matching 0.3.1-alpha4-bindings mod on BOTH client and server.')
+print('Requires matching 0.3.2-alpha4-drafts mod on BOTH client and server.')
 print('V2 setup page: lua /home/bec_v2_setup_hd.lua')
 print('V1 monitoring bindings: lua /home/bec_hd.lua monitor')
 '''
