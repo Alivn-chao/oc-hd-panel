@@ -1,0 +1,122 @@
+# OCHD HTML 应用原型 · 0.4.0-alpha1
+
+玩家可以上传自己制作的HTML/CSS/JavaScript页面包，网页接收OC数据、提交事件并接收Lua回执。它是通用接口，示例看板不写死在Java中。原有BEC页面、绑定草稿、1080p和墙体布局继续保留。
+
+## 安装和第一次测试
+
+这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha1-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
+
+客户端下载 `ochd-html-client-win-x64.zip`，先把旧OCHD JAR移出mods，再将客户端包解压到游戏目录（有 `mods` 的那层）。包内同时包含新版JAR和浏览器运行时，得到：
+
+```text
+游戏目录/
+  mods/oc-hd-panel-0.4.0-alpha1-html.jar
+  ochd-web-runtime/
+    host.jar
+    lib/javafx-web.jar
+    lib/…
+```
+
+原型使用OpenJFX 21.0.12 WebKit，在一个独立、无可见窗口的客户端Java进程中运行。JavaFX不加入Minecraft类路径。客户端用Java21启动；如果必须让Minecraft使用另一个Java，可以用JVM参数 `-Dochd.web.java="你的Java21目录/bin/javaw.exe"` 指定浏览器进程。JAR本身保留Java8字节码，服务器不加载JavaFX。Linux/macOS客户端暂不提供运行包；缺少runtime时普通页面仍可用，HTML页显示原因。
+
+在游戏OC中执行：
+
+```sh
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha1-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+lua /home/ochd_install_web_demo.lua
+```
+
+安装器只写示例及网页辅助库，不操作机器、不启动程序；重复安装一致时不重复写入，有差异会备份并在失败时回滚。安装完成后：
+
+```sh
+lua /home/ochd_web_demo.lua
+```
+
+示例要求OC只接入一块OCHD墙的主组件。右键屏幕可输入、Ctrl+V粘贴、点按钮，Esc退出交互，F6缩放；在OC键盘按Q停止示例并释放屏幕。示例实际读取 `computer.uptime/freeMemory/totalMemory`，网页“保存目标”仅修改本程序的演示参数，不控制机器。
+
+## 页面包
+
+```text
+/home/ochd_apps/my_dashboard/
+  app.json
+  index.html
+  style.css
+  main.js
+```
+
+`app.json` 是JSON数据，不执行Lua：
+
+```json
+{"id":"my-dashboard","title":"我的看板","entry":"index.html","files":["index.html","style.css","main.js"],"events":["set_target"]}
+```
+
+文件列表明确列出要上传的资源。当前最多32个文本资源，只支持html/css/js/svg/json/txt，总编码包不超过256KiB；路径禁止绝对路径、`..`和反斜杠。图片可用内嵌data URL或SVG。普通`script src`、`link href`及CSS `url()`中的包内相对路径会转成内存资源；动态import、相对fetch、CSS引号形式@import尚未实现。
+
+玩家可通过OC互联网卡下载别人分享的页面文件，或手动放入OC硬盘。改包后由自己的Lua重新调用setWebApp；不是让每位观看者手动安装页面。模组按SHA256同步并校验页面包，观看者客户端按内容版本缓存。公开分享时只分享页面包/Lua，不包含设备配置和凭据。
+
+## Lua接口（已实现）
+
+```lua
+local W=assert(loadfile('/home/ochd_web.lua'))()
+local panel=require('component').proxy('自己的屏幕地址')
+local package=W.package('/home/ochd_apps/my_dashboard')
+local ok,reason=panel.setWebApp(package)
+-- 检查返回值；被节流时稍后重试，不要紧接着调用publish。
+panel.publish({energy=128400000,capacity=500000000,history={1,2,3}})
+```
+
+`setWebApp`验证并保存一份完整包，绑定调用电脑，但不会执行机器操作。`publish`每次是完整JSON数据快照，最多每10个服务器tick接受一次；不变的数据不提升修订号。最大16KiB、深度8、512个值，有限数值/布尔/字符串/嵌套表；连续数字索引表转换成JSON数组，根必须为对象。页面额外收到 `_online` 布尔标志。即使数据不变也要持续publish作为心跳，长期停止后页面离线。
+
+这两种调用返回 `true` 成功、`false,"rate limited"` 节流、`nil,原因` 失败。其他电脑不能抢占已有绑定；正常退出可 `panel.release()`。不要在同一块屏幕上同时运行两个程序。
+
+## JavaScript接口（已实现）
+
+```js
+OC.onData(data => {
+  document.querySelector('#energy').textContent = data.energy;
+});
+
+async function saveTarget(target) {
+  try {
+    const result = await OC.emit('set_target', {target});
+    console.log(result.message);
+  } catch (result) {
+    console.log(result.message);
+  }
+}
+```
+
+`onData`订阅数据，已有快照时立即交付；`emit`返回Promise，只有app.json声明过的事件可发送。事件最多4KiB、同一墙一次一个待回执操作、客户端限制发送频率。只有玩家正打开该屏幕的交互页时才接受网页事件；后台网页不能自动控制机器。
+
+Lua收到：
+
+```text
+hd_panel_web, 屏幕地址, 事件名, 玩家名, 请求编号, JSON参数文本
+```
+
+解析参数并按程序自己的规则校验后回执：
+
+```lua
+local args=W.decode(jsonText)
+-- 自己校验类型、范围、设备状态，再执行允许的操作。
+panel.ack(requestId,true,'保存完成')
+```
+
+成功ack让Promise resolve；失败ack或超时reject。不自动重试操作，超时不等于Lua未执行。服务器核对墙距离、OC用户权限、页面版本、事件白名单、待回执和节流条件。网页拿不到组件代理、完整电脑配置、token或Java对象；Lua自行选择发布哪些数据。
+
+## 性能与边界
+
+- 浏览器、排版、JS、图表和PNG纹理生成在玩家客户端独立进程。服务器保存页面包、发布数据、验证事件；不会渲染网页。
+- 页面资源按内容版本单独分块下载，普通方块数据包只同步摘要和数据，不反复携带HTML。缓存最多8包约2MiB，在内存中；每面墙保留一份当前页面包到存档NBT。
+- **原型每客户端同时只运行一个网页视图。** 同一面墙共用一个纹理；普通观看最多2次/秒快照，打开交互页最多10次/秒。实际帧率可能更低，PNG/进程通信仍有优化空间。
+- 15秒未使用视图会关闭浏览器；运行时无响应约20秒关闭。尚未实现观看者订阅驱动的OC自动停采；Lua运行频率仍由作者负责。示例每秒一份OC自身指标。
+- 支持真实WebKit HTML/CSS/JS、输入、SVG、Canvas。不是完整Chrome：未承诺WebGL、音视频、开发者工具、所有现代CSS/JS特性。原生下拉弹出菜单、右键菜单、IME仍待单独适配/验收。原型禁止外网请求、弹窗、iframe、任意导航；页面资源和JS应随包提供，不引用CDN。
+- 只测试自己的或信任来源的页面。离屏进程、CSP和有限桥接减少耦合，并不等于浏览器漏洞的完整安全隔离。暂不提供公共页面商店、任意网站浏览或服务器向客户端分发可执行Java。
+
+## 参考与验证
+
+参考用户提供的 [WebDisplays](https://github.com/montoyo/webdisplays) 中ScreenRenderer的浏览器纹理和TileEntityScreen的输入转发思路；没有复制其代码。该公开主线面向Minecraft1.12.2/MCEF。原型改用独立WebKit进程以避开GTNH1.7.10的CEF/类加载兼容问题。
+
+浏览器API参考 [OpenJFX WebEngine](https://openjfx.io/javadoc/21/javafx.web/javafx/scene/web/WebEngine.html)。运行包附OpenJFX和Gson原始许可，依赖URL/摘要见web-runtime manifests；Host源码包含在运行包中。`tools/web/build_runtime.py`使用Java21构建。
+
+已经通过真实Windows WebKit离屏测试：加载多文件HTML/CSS/JS、OC快照进入DOM、事件/ack Promise、鼠标点击、数字键入、粘贴、SVG/Canvas和1920×1080 PNG。Java协议/边界测试及Lua解析/示例流程模拟通过；实际Minecraft侧的进程启动器、PNG读取和事件队列也通过独立进程探针验证。**尚未在实际GTNH客户端/专用服务器验证**，不能将离屏渲染或模拟称为游戏验收。

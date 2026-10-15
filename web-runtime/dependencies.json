@@ -1,0 +1,37 @@
+{
+  "javafx-base.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-base/21.0.12/javafx-base-21.0.12-win.jar",
+    "sha256": "110c32b2034d1ca4c644b919f9f28370d312cd192a26e2df1a83ec1df4cd6a6b",
+    "bytes": 753228
+  },
+  "javafx-graphics.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/21.0.12/javafx-graphics-21.0.12-win.jar",
+    "sha256": "af380b5afede1f13fbe0a8ebdb5b2855a97b1e22c60dcefb5a90a498fd679722",
+    "bytes": 5909041
+  },
+  "javafx-controls.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-controls/21.0.12/javafx-controls-21.0.12-win.jar",
+    "sha256": "fe32329525908377b3a34580f37fa4dafc0574943521ac2244a56380ac6f7770",
+    "bytes": 2582535
+  },
+  "javafx-media.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-media/21.0.12/javafx-media-21.0.12-win.jar",
+    "sha256": "4a50be716a4afa246787d114679ddba1ecc17e35f275ff3b99ccb49610ec1a06",
+    "bytes": 1169456
+  },
+  "javafx-web.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-web/21.0.12/javafx-web-21.0.12-win.jar",
+    "sha256": "5101cdfbb86d66fdc7407ab7ab9afefd4b53915f646b0c22470fb657b3478e65",
+    "bytes": 35967923
+  },
+  "javafx-swing.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/openjfx/javafx-swing/21.0.12/javafx-swing-21.0.12-win.jar",
+    "sha256": "d9b555ff90af7806996eebfb795ebe5e163c0a67118d7305f4edea022652e760",
+    "bytes": 89705
+  },
+  "gson.jar": {
+    "source": "https://repo.maven.apache.org/maven2/com/google/code/gson/gson/2.2.4/gson-2.2.4.jar",
+    "sha256": "c0328cd07ca9e363a5acd00c1cf4afe8cf554bd6d373834981ba05cebec687fb",
+    "bytes": 190432
+  }
+}

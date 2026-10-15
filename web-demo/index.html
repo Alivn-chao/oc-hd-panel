@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>OCHD 自定义看板</title><link rel="stylesheet" href="style.css"></head>
+<body><header><strong>OCHD<span>网页应用</span></strong><nav>运行总览 <b>自定义看板</b> 页面开发</nav><small id="connection">等待 OC 数据</small></header>
+<main><section class="heading"><div><p>YOUR PAGE · YOUR DATA</p><h1>我的 OC 看板</h1><span>HTML / CSS / JavaScript 页面包，数据由 Lua 提供。</span></div><div class="badge">WebKit · 1080p</div></section>
+<section class="metrics"><article><label>OC 运行时间</label><h2 id="uptime">—</h2><small>真实 OC computer.uptime()</small></article><article class="teal"><label>可用内存</label><h2 id="memory">—</h2><small id="memory-detail">等待电脑数据</small></article><article class="gold"><label>看板目标</label><h2 id="target">—</h2><small>通过网页请求 Lua 修改</small></article></section>
+<section class="grid"><article class="chart"><h3>数据变化</h3><p>最近的可用内存快照，曲线在客户端绘制。</p><canvas id="history" width="1100" height="350"></canvas><div class="legend"><i></i> OC 可用内存 <span>每秒推送一次 · 不扫描机器</span></div></article><article class="form"><h3>网页 → OC → 回执</h3><p>这个示例只修改自己的演示参数，不控制机器。</p><label for="new-target">新的目标值</label><input id="new-target" type="number" min="1" max="1000000" placeholder="支持 Ctrl+V 粘贴"><button id="save">保存目标</button><button class="secondary" id="reset">清零演示计数</button><div id="notice">等待第一次数据推送</div><small>收到回执后更新显示，页面刷新不会替你重复执行操作。</small></article></section>
+<footer>编辑自己的页面包即可改布局、图表和表单，无需重新编译模组。<span id="counter">已推送 0 次</span></footer></main><script src="main.js"></script></body></html>

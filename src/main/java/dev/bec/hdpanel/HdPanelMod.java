@@ -11,7 +11,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.3.2-alpha4-drafts",
+@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.4.0-alpha1-html",
     dependencies = "required-after:OpenComputers@[1.12.61-GTNH,)", acceptedMinecraftVersions = "[1.7.10]")
 public class HdPanelMod {
     public static final String ID = "ochdpanel";
@@ -29,6 +29,8 @@ public class HdPanelMod {
             'I', Items.iron_ingot, 'R', Items.redstone);
         NETWORK.registerMessage(ActionPacket.Handler.class, ActionPacket.class, 0, Side.SERVER);
         NETWORK.registerMessage(ActionReplyPacket.Handler.class, ActionReplyPacket.class, 1, Side.CLIENT);
+        NETWORK.registerMessage(WebAssetRequest.Handler.class,WebAssetRequest.class,2,Side.SERVER);
+        NETWORK.registerMessage(WebAssetPacket.Handler.class,WebAssetPacket.class,3,Side.CLIENT);
         proxy.init();
     }
 }

@@ -7,6 +7,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 
 public class CommonProxy {
     public void receiveReply(ActionReplyPacket reply) { }
+    public void receiveWebAsset(WebAssetPacket packet) { }
     private static final ConcurrentLinkedQueue<Runnable> TASKS = new ConcurrentLinkedQueue<Runnable>();
     public void init() { FMLCommonHandler.instance().bus().register(this); }
     public void open(PanelTile tile) { }

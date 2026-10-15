@@ -20,9 +20,10 @@ public class ActionPacket implements IMessage {
     public static ActionPacket bindings(PanelTile tile,int request,String payload,boolean draft) {
         ActionPacket p=new ActionPacket(tile,draft?7:6,request,0);p.widget=payload;return p;
     }
+    public static ActionPacket web(PanelTile tile,int request,String payload){ActionPacket p=new ActionPacket(tile,8,request,0);p.widget=payload;return p;}
     @Override public void fromBytes(ByteBuf buf) {
         x = buf.readInt(); y = buf.readInt(); z = buf.readInt(); action = buf.readUnsignedByte(); request = buf.readInt(); value = buf.readInt();
-        widget=ByteBufUtils.readUTF8String(buf);if(widget.length()>(action>=6?BindingModel.MAX_PAYLOAD:32))throw new IllegalArgumentException("payload too long");
+        widget=ByteBufUtils.readUTF8String(buf);if(widget.length()>(action==8?WebAppModel.MAX_EVENT:action>=6?BindingModel.MAX_PAYLOAD:32))throw new IllegalArgumentException("payload too long");
     }
     @Override public void toBytes(ByteBuf buf) {
         buf.writeInt(x); buf.writeInt(y); buf.writeInt(z); buf.writeByte(action); buf.writeInt(request); buf.writeInt(value);
@@ -34,7 +35,7 @@ public class ActionPacket implements IMessage {
                 @Override public void run() {
                     EntityPlayerMP player = context.getServerHandler().playerEntity;
                     if (player == null || player.playerNetServerHandler == null || !player.playerNetServerHandler.netManager.isChannelOpen()
-                        || message.action > 7 || message.request <= 0 || message.value < 0
+                        || message.action > 8 || message.request <= 0 || message.value < 0
                         || !player.worldObj.blockExists(message.x, message.y, message.z)) return;
                     TileEntity tile = player.worldObj.getTileEntity(message.x, message.y, message.z);
                     if (tile instanceof PanelTile) ((PanelTile) tile).action(player, message.action, message.request, message.value,message.widget);

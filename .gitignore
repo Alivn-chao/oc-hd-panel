@@ -12,3 +12,4 @@ bec_hd.config
 *.hd.bak.*
 *.hd.new.*
 /build-tools/
+/web-runtime/lib/

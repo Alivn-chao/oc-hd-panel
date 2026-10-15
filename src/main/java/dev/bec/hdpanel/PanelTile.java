@@ -21,6 +21,8 @@ public class PanelTile extends TileEntityEnvironment {
     public long revision;
     public boolean online;
     public String app="welcome",layout=AppModel.WELCOME,values="{}";
+    public String webPackage="";
+    private final java.util.Map<String,Long> webRequests=new java.util.HashMap<String,Long>();
     public int wallWidth=1,wallHeight=1,column,row;
     private int masterX,masterY,masterZ;
     private boolean wallConfigured;
@@ -78,6 +80,28 @@ public class PanelTile extends TileEntityEnvironment {
         if(!values.equals(normalized)) {values=normalized;revision++;dirty=true;markDirty();}
         lastUpdate=now;if(!online){online=true;dirty=true;}return new Object[]{true};
     }
+    @Callback(doc="setWebApp(package:table):boolean -- Upload a bounded HTML/CSS/JS page package; does not execute machine actions.")
+    public Object[] setWebApp(Context context,Arguments args){
+        if(worldObj.getTotalWorldTime()-lastUpdate<10)return new Object[]{false,"rate limited"};
+        String source;try{source=WebAppModel.pack(args.checkTable(0));}catch(IllegalArgumentException e){return new Object[]{null,e.getMessage()};}
+        if(!claim(context))return new Object[]{null,"panel bound to another computer or is a wall follower"};
+        finish(false,"页面已更换，旧请求未确认");webPackage=source;layout=WebAppModel.descriptor(source);values="{}";payload="{}";app="web";touch();return new Object[]{true};
+    }
+    @Callback(doc="publish(data:table):boolean -- Publish a complete web-app snapshot, at most twice per second.")
+    public Object[] publish(Context context,Arguments args){
+        if(!"web".equals(app)||!claim(context))return new Object[]{null,"call setWebApp first"};
+        long now=worldObj.getTotalWorldTime();if(now-lastUpdate<10)return new Object[]{false,"rate limited"};
+        String next;try{next=WebAppModel.data(args.checkTable(0));}catch(IllegalArgumentException e){return new Object[]{null,e.getMessage()};}
+        if(!next.equals(values)){values=next;revision++;dirty=true;markDirty();}lastUpdate=now;if(!online){online=true;dirty=true;}return new Object[]{true};
+    }
+    public void sendWebPackage(EntityPlayerMP player,String hash){
+        if(!"web".equals(app)||webPackage.isEmpty()||distanceSq(player.posX,player.posY,player.posZ)>1024||!WebAppModel.hash(webPackage).equals(hash))return;
+        long now=worldObj.getTotalWorldTime();String id=player.getUniqueID().toString();Long last=webRequests.get(id);
+        if(last!=null&&now-last<40)return;if(webRequests.size()>128)webRequests.clear();webRequests.put(id,now);
+        byte[] bytes=webPackage.getBytes(java.nio.charset.StandardCharsets.UTF_8);int total=(bytes.length+WebAppModel.CHUNK-1)/WebAppModel.CHUNK;
+        for(int i=0;i<total;i++){int start=i*WebAppModel.CHUNK,end=Math.min(bytes.length,start+WebAppModel.CHUNK);
+            HdPanelMod.NETWORK.sendTo(new WebAssetPacket(hash,i,total,java.util.Arrays.copyOfRange(bytes,start,end)),player);}
+    }
     @Callback(doc="getWallSize():number,number -- Number of physical panels in this wall.")
     public Object[] getWallSize(Context context,Arguments args){return new Object[]{wallWidth,wallHeight};}
 
@@ -85,7 +109,7 @@ public class PanelTile extends TileEntityEnvironment {
     public Object[] clearUI(Context context,Arguments args) {
         if(master()!=this||(bound()&&!controllerAddress.equals(context.node().address())))return new Object[]{false};
         finish(false,"页面已清空，操作未确认");
-        app="welcome";layout=AppModel.WELCOME;values="{}";payload="{}";
+        app="welcome";layout=AppModel.WELCOME;values="{}";payload="{}";webPackage="";
         controller=null;controllerAddress="";online=false;revision++;dirty=true;markDirty();
         return new Object[]{true};
     }
@@ -162,7 +186,7 @@ public class PanelTile extends TileEntityEnvironment {
         }
     }
     public void action(EntityPlayerMP player, int action, int request, int value,String widget) {
-        if (worldObj.isRemote || action < 0 || action > 7 || request<=0 || value<0 || master()!=this) return;
+        if (worldObj.isRemote || action < 0 || action > 8 || request<=0 || value<0 || master()!=this) return;
         if (!online || controller==null) { reply(player, request, 2, "面板离线，无法提交"); return; }
         if (distanceSq(player.posX,player.posY,player.posZ) > 64
                 || !controller.canInteract(player.getCommandSenderName())) {
@@ -170,13 +194,19 @@ public class PanelTile extends TileEntityEnvironment {
         }
         if(action==5&&(!"custom".equals(app)||!AppModel.actionable(layout,values,widget,value))) {reply(player,request,2,"控件已禁用或不存在");return;}
         if(action<5&&!"bec_dashboard".equals(app)){reply(player,request,2,"当前应用不接受此操作");return;}
-        if(action>=6&&(!"bec_dashboard".equals(app)||!BindingModel.accepts(payload,widget,action==7))) {
+        if((action==6||action==7)&&(!"bec_dashboard".equals(app)||!BindingModel.accepts(payload,widget,action==7))) {
             reply(player,request,2,"绑定字段无效或当前不允许保存");return;
         }
+        if(action==8&&(!"web".equals(app)||!WebAppModel.event(layout,widget))){reply(player,request,2,"页面版本或事件无效");return;}
         long now = worldObj.getTotalWorldTime();
         if (pendingRequest!=0 || now - lastClick < 5) { reply(player, request, 2, "面板正在处理请求，请稍后再试"); return; }
         lastClick = now;
         pendingRequest=request; pendingPlayer=player; pendingSince=now;
+        if(action==8){
+            com.google.gson.JsonObject e=new com.google.gson.JsonParser().parse(widget).getAsJsonObject();
+            if(!controller.signal("hd_panel_web",node.address(),e.get("event").getAsString(),player.getCommandSenderName(),request,e.get("args").toString()))finish(false,"OC事件队列未接受请求");
+            else reply(player,request,0,"请求已送达OC");return;
+        }
         String[] actions = {"refresh", "pause", "resume", "patterns", "cache_target","", "binding_save", "binding_draft"};
         if (!controller.signal(action==5?"hd_panel_event":"hd_panel_action", node.address(), action==5?widget:actions[action], player.getCommandSenderName(), request, value,action>=6?widget:""))
             finish(false, "OC 事件队列未接受请求");
@@ -204,11 +234,13 @@ public class PanelTile extends TileEntityEnvironment {
     @Override public void readFromNBT(NBTTagCompound nbt) {
         super.readFromNBT(nbt); payload = nbt.getString("data"); revision = nbt.getLong("revision");
         controllerAddress = nbt.getString("controller"); online = false;
+        byte[] web=nbt.getByteArray("webPackage");webPackage=web.length<=WebAppModel.MAX_PACKAGE?new String(web,java.nio.charset.StandardCharsets.UTF_8):"";
         readDisplay(nbt);
     }
     @Override public void writeToNBT(NBTTagCompound nbt) {
         super.writeToNBT(nbt); nbt.setString("data", payload); nbt.setLong("revision", revision);
         nbt.setString("controller", controllerAddress);
+        nbt.setByteArray("webPackage",webPackage.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         NBTTagCompound display=snapshot();for(Object key:display.func_150296_c()) {String k=(String)key;nbt.setTag(k,display.getTag(k));}
     }
     private void readDisplay(NBTTagCompound n) {
