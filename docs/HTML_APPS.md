@@ -1,16 +1,16 @@
-# OCHD HTML 应用原型 · 0.4.0-alpha3
+# OCHD HTML 应用原型 · 0.4.0-alpha4
 
 玩家可以上传自己制作的HTML/CSS/JavaScript页面包，网页接收OC数据、提交事件并接收Lua回执。它是通用接口，示例看板不写死在Java中。原有BEC页面、绑定草稿、1080p和墙体布局继续保留。
 
 ## 安装和第一次测试
 
-这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha3-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
+这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha4-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21 / 25** 已测运行时。
 
 客户端下载 `ochd-html-client-win-x64.zip`，先把旧OCHD JAR移出mods，再将客户端包解压到游戏目录（有 `mods` 的那层）。包内同时包含新版JAR和浏览器运行时，得到：
 
 ```text
 游戏目录/
-  mods/oc-hd-panel-0.4.0-alpha3-html.jar
+  mods/oc-hd-panel-0.4.0-alpha4-html.jar
   ochd-web-runtime/
     host.jar
     lib/javafx-web.jar
@@ -22,7 +22,7 @@
 在游戏OC中执行：
 
 ```sh
-wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha3-lua-fix1/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha4-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
 lua /home/ochd_install_web_demo.lua
 ```
 
@@ -130,3 +130,11 @@ panel.ack(requestId,true,'保存完成')
 ### alpha3 OC示例修复
 
 OC组件回调是带有 `__call` 的table，旧示例只允许function，导致已装正确alpha3 JAR也误报版本不符。`v0.4.0-alpha3-lua-fix1` 改用 `component.methods` 判断接口是否存在（支持false表示非direct方法），无需替换JAR或浏览器运行时。重新下载上面的安装器并运行，再启动示例即可。
+
+## alpha4 输入与外框修复
+
+旧版高频鼠标移动与重复截图会塞满32项运行时队列，导致点击被丢弃。alpha4将过时移动/数据/缩放请求合并，鼠标移动最多约30次/秒，单客户端同时只等待一个截图；运行时对离散按键/按下/松开保留顺序并施加背压，避免静默丢弃。Minecraft渲染线程不等待浏览器进程。
+
+HTML交互窗口复用原alpha4的FramePainter金属外框，边框在页面外绘制，不改变HTML可点击区域。世界中方块外壳、接缝贴图与几何保留原alpha4文件与边界。
+
+升级必须同时替换客户端JAR与 `ochd-web-runtime/host.jar`（推荐重新解压完整客户端ZIP）；只替换JAR会缺少截图完成回执，无法正常持续刷新。服务器只替换JAR。不需要重装Lua，alpha3-lua-fix1脚本仍适用。

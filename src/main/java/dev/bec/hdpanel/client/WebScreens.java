@@ -60,7 +60,7 @@ public final class WebScreens {
             error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";sentZoom=-1;error="网页运行时无响应，已关闭；稍后重试";}
         }
         public void zoom(double value){if(!Double.isNaN(value)&&!Double.isInfinite(value))zoom=Math.max(.5,Math.min(2.5,value));}
-        public void input(JsonObject command){if(host!=null){command.addProperty("type","input");host.send(command);}}
+        public void input(JsonObject command){if(host!=null){command.addProperty("type","input");if(!host.send(command))error="输入繁忙，请稍后重试";}}
         private void event(JsonObject e){
             try{int request=e.get("request").getAsInt();if(request<=0)return;
                 JsonObject packet=new JsonObject();packet.addProperty("hash",hash);packet.add("event",e.get("event"));packet.add("args",e.get("args"));

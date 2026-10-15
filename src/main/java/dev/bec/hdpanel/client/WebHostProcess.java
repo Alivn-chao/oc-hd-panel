@@ -1,6 +1,8 @@
 package dev.bec.hdpanel.client;
 
 import com.google.gson.*;
+import dev.bec.hdpanel.WebCommandQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.io.*;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.*;
@@ -9,7 +11,8 @@ import javax.imageio.ImageIO;
 
 /** Async local process; browser work and stalled JS never run on the Minecraft render thread. */
 public final class WebHostProcess {
-    private final ArrayBlockingQueue<String> outgoing=new ArrayBlockingQueue<String>(24);
+    private final WebCommandQueue outgoing=new WebCommandQueue(128);
+    private final AtomicBoolean snapshotPending=new AtomicBoolean();
     public final ArrayBlockingQueue<JsonObject> events=new ArrayBlockingQueue<JsonObject>(16);
     public final AtomicReference<BufferedImage> frame=new AtomicReference<BufferedImage>();
     public volatile String error="正在启动网页运行时…";
@@ -31,12 +34,18 @@ public final class WebHostProcess {
             while(!closed){int type=input.readUnsignedByte(),size=input.readInt();if(size<0||size>12*1024*1024)throw new IOException("runtime frame limit");byte[] bytes=new byte[size];input.readFully(bytes);lastMessage=System.currentTimeMillis();
                 if(type==1){if(size<24||readInt(bytes,16)!=1920||readInt(bytes,20)!=1080)throw new IOException("runtime image dimensions");BufferedImage image=ImageIO.read(new ByteArrayInputStream(bytes));if(image==null)throw new IOException("invalid PNG");frame.set(image);error="";}
                 else if(type==2){JsonObject event=new JsonParser().parse(new String(bytes,"UTF-8")).getAsJsonObject();String kind=event.get("type").getAsString();
-                    if("error".equals(kind))error=event.get("message").getAsString();else if("event".equals(kind))events.offer(event);}
+                    if("snapshot_done".equals(kind))snapshotPending.set(false);else if("error".equals(kind))error=event.get("message").getAsString();else if("event".equals(kind))events.offer(event);}
             }
         }catch(Exception e){if(!closed)error="网页运行时未就绪："+e.getMessage();}finally{if(process!=null)process.destroy();}
     }
     private static int readInt(byte[] b,int i){return (b[i]&255)<<24|(b[i+1]&255)<<16|(b[i+2]&255)<<8|(b[i+3]&255);}
-    private void writeLoop(){try{Writer out=new OutputStreamWriter(process.getOutputStream(),"UTF-8");while(!closed){String line=outgoing.poll(1,TimeUnit.SECONDS);if(line!=null){out.write(line);out.write('\n');out.flush();}}}catch(Exception e){if(!closed)error="网页运行时连接中断";}}
-    public boolean send(JsonObject command){return !closed&&outgoing.offer(command.toString());}
+    private void writeLoop(){try{Writer out=new OutputStreamWriter(process.getOutputStream(),"UTF-8");while(!closed){String line=outgoing.poll(1000);if(line!=null){out.write(line);out.write('\n');out.flush();}}}catch(Exception e){if(!closed)error="网页运行时连接中断";}}
+    public boolean send(JsonObject command){
+        if(closed)return false;
+        boolean snapshot="snapshot".equals(command.get("type").getAsString());
+        if(snapshot&&!snapshotPending.compareAndSet(false,true))return false;
+        boolean accepted=outgoing.offer(command);if(!accepted&&snapshot)snapshotPending.set(false);
+        return accepted;
+    }
     public void close(){closed=true;outgoing.clear();frame.set(null);if(process!=null)process.destroy();}
 }

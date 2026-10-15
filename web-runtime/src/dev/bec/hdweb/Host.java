@@ -1,6 +1,7 @@
 package dev.bec.hdweb;
 
 import com.google.gson.*;
+import dev.bec.hdpanel.WebCommandQueue;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -24,7 +25,7 @@ import javafx.scene.web.*;
 public final class Host {
     private final DataOutputStream out=new DataOutputStream(new BufferedOutputStream(System.out));
     private WebView view;private WebEngine engine;private javax.swing.JWindow window;private String latest="{}";private boolean loaded,mouseDown;
-    private final ArrayBlockingQueue<String> inbox=new ArrayBlockingQueue<String>(32);
+    private final WebCommandQueue inbox=new WebCommandQueue(128);
     private static final int MAX_LINE=400000;
     private static final String CSP="default-src 'none'; script-src 'unsafe-inline' data:; style-src 'unsafe-inline' data:; img-src data:; font-src data:; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
     private static final String SDK="(function(){var listeners=[],last=null,pending={},seq=1;window.__ochdData=function(d){last=d;listeners.forEach(function(f){try{f(d);}catch(e){}});};window.__ochdAck=function(a){var p=pending[a.request];if(p){delete pending[a.request];a.ok?p.resolve(a):p.reject(a);}};Object.defineProperty(window,'OC',{value:Object.freeze({onData:function(f){listeners.push(f);if(last!==null)f(last);},emit:function(name,args){return new Promise(function(resolve,reject){var id=(seq++%2147483646)+1;pending[id]={resolve:resolve,reject:reject};window.status=JSON.stringify({type:'event',request:id,event:name,args:args||{}});setTimeout(function(){if(pending[id]){delete pending[id];reject({ok:false,message:'OC response timeout'});}},12000);});}})});})();";
@@ -59,7 +60,7 @@ public final class Host {
         if(type.equals("load")){loaded=false;engine.loadContent(document(c.getAsJsonObject("package")));}
         else if(type.equals("data")){latest=c.get("data").toString();data();}
         else if(type.equals("zoom")){double z=c.get("value").getAsDouble();if(Double.isFinite(z))view.setZoom(Math.max(.5,Math.min(2.5,z)));}
-        else if(type.equals("snapshot"))snapshot();
+        else if(type.equals("snapshot")){try{snapshot();}finally{record("snapshot_done","");}}
         else if(type.equals("ack"))engine.executeScript("window.__ochdAck&&window.__ochdAck("+c.get("data").toString()+");");
         else if(type.equals("input"))input(c);
         else if(type.equals("eval")&&Boolean.getBoolean("ochd.selftest")){Object result=engine.executeScript(c.get("script").getAsString());record("eval",String.valueOf(result));}
@@ -104,7 +105,7 @@ public final class Host {
     }
     public static void main(String[] args)throws Exception{
         Host host=new Host();Platform.startup(host::init);BufferedReader reader=new BufferedReader(new InputStreamReader(System.in,StandardCharsets.UTF_8));
-        while(true){StringBuilder line=new StringBuilder();int ch;while((ch=reader.read())!=-1&&ch!='\n'){if(line.length()>=MAX_LINE)throw new IOException("command too long");line.append((char)ch);}if(ch==-1)break;if(!host.inbox.offer(line.toString()))host.record("error","host input queue full");}
+        while(true){StringBuilder line=new StringBuilder();int ch;while((ch=reader.read())!=-1&&ch!='\n'){if(line.length()>=MAX_LINE)throw new IOException("command too long");line.append((char)ch);}if(ch==-1)break;host.inbox.put(new JsonParser().parse(line.toString()).getAsJsonObject());}
         Platform.exit();System.exit(0);
     }
 }

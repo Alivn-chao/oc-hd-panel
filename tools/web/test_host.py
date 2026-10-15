@@ -78,10 +78,19 @@ try:
  assert evaluate('window.clicked')=='true','zoomed mouse coordinates must match button'
  send({'type':'zoom','value':1});time.sleep(.1)
  assert float(evaluate('window.innerWidth'))==before
+ # Raw protocol saturation also must preserve discrete input; no silent queue drops.
+ evaluate("window.clicked=false;document.getElementById('button').onclick=function(){window.clicked=true;OC.emit('stress_click',{value:99});}")
+ for i in range(4000):
+  send({'type':'input','kind':'move','x':50+i%180,'y':120})
+  if i%20==0:send({'type':'snapshot'})
+ rect=json.loads(evaluate("JSON.stringify((function(){var r=document.getElementById('button').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})())"))
+ send(dict(type='input',kind='down',**rect));send(dict(type='input',kind='up',**rect));clicked=wait('event')
+ assert clicked['event']=='stress_click'and clicked['args']['value']==99
+ assert evaluate('window.clicked')=='true'
  send({'type':'snapshot'});png=wait('frame');assert png[:8]==b'\x89PNG\r\n\x1a\n'
  assert struct.unpack('>II',png[16:24])==(1920,1080)
  (ROOT/'build/web-host-preview.png').write_bytes(png)
- print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
+ print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, raw input saturation followed by click, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
 finally:
  try:send({'type':'close'});process.wait(timeout=5)
  except Exception:process.kill()
