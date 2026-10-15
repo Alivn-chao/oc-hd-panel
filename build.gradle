@@ -3,7 +3,7 @@ plugins {
     id 'com.gtnewhorizons.retrofuturagradle' version '2.0.5'
 }
 group = 'dev.bec.hdpanel'
-version = '0.4.0-alpha1-html'
+version = '0.4.0-alpha2-html'
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
     sourceCompatibility = JavaVersion.VERSION_1_8

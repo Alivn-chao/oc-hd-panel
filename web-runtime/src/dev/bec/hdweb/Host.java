@@ -19,13 +19,11 @@ import javafx.scene.input.*;
 import javafx.scene.layout.StackPane;
 import javafx.scene.transform.Scale;
 import javafx.scene.web.*;
-import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 /** Isolated client WebKit host. stdin JSON commands, stdout length-prefixed PNG/JSON. */
 public final class Host {
     private final DataOutputStream out=new DataOutputStream(new BufferedOutputStream(System.out));
-    private WebView view;private WebEngine engine;private Stage stage;private String latest="{}";private boolean loaded,mouseDown;
+    private WebView view;private WebEngine engine;private javax.swing.JWindow window;private String latest="{}";private boolean loaded,mouseDown;
     private final ArrayBlockingQueue<String> inbox=new ArrayBlockingQueue<String>(32);
     private static final int MAX_LINE=400000;
     private static final String CSP="default-src 'none'; script-src 'unsafe-inline' data:; style-src 'unsafe-inline' data:; img-src data:; font-src data:; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
@@ -40,7 +38,13 @@ public final class Host {
         engine.locationProperty().addListener((o,a,b)->{if(b!=null&&!b.isEmpty()&&!b.equals("about:blank")){engine.getLoadWorker().cancel();record("error","Navigation disabled in local dashboard preview");}});
         engine.getLoadWorker().stateProperty().addListener((o,a,b)->{if(b==Worker.State.SUCCEEDED){loaded=true;data();record("ready","HTML loaded");}else if(b==Worker.State.FAILED)record("error","HTML load failed");});
         StackPane root=new StackPane(view);Scene scene=new Scene(root,1280,720);
-        stage=new Stage(StageStyle.UTILITY);stage.setScene(scene);stage.setOpacity(0);stage.setX(-10000);stage.setY(-10000);stage.show();view.requestFocus();
+        // A non-focusable transparent Swing host keeps WebKit painting without stealing Minecraft focus.
+        final javafx.embed.swing.JFXPanel[] holder=new javafx.embed.swing.JFXPanel[1];
+        try{javax.swing.SwingUtilities.invokeAndWait(()->{
+            window=new javax.swing.JWindow();window.setType(java.awt.Window.Type.UTILITY);window.setFocusableWindowState(false);window.setAutoRequestFocus(false);
+            holder[0]=new javafx.embed.swing.JFXPanel();window.add(holder[0]);window.setSize(1280,720);window.setLocation(-10000,-10000);window.setOpacity(0F);
+        });}catch(Exception e){throw new IllegalStateException(e);}
+        holder[0].setScene(scene);javax.swing.SwingUtilities.invokeLater(()->window.setVisible(true));view.requestFocus();
         javafx.animation.Timeline timer=new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.millis(20),e->{for(int i=0;i<8;i++){String line=inbox.poll();if(line==null)break;try{command(new JsonParser().parse(line).getAsJsonObject());}catch(Throwable ex){record("error",ex.getClass().getSimpleName()+": "+String.valueOf(ex.getMessage()));}}}));timer.setCycleCount(javafx.animation.Animation.INDEFINITE);timer.play();
         record("started","WebKit host ready");
     }
@@ -58,7 +62,7 @@ public final class Host {
         else if(type.equals("ack"))engine.executeScript("window.__ochdAck&&window.__ochdAck("+c.get("data").toString()+");");
         else if(type.equals("input"))input(c);
         else if(type.equals("eval")&&Boolean.getBoolean("ochd.selftest")){Object result=engine.executeScript(c.get("script").getAsString());record("eval",String.valueOf(result));}
-        else if(type.equals("close")){stage.close();Platform.exit();System.exit(0);}
+        else if(type.equals("close")){javax.swing.SwingUtilities.invokeLater(()->window.dispose());Platform.exit();System.exit(0);}
     }
     private static boolean flag(JsonObject c,String name){return c.has(name)&&c.get(name).getAsBoolean();}
     private void input(JsonObject c){

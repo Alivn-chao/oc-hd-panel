@@ -6,10 +6,10 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'libs/oc-hd-panel-0.3.0-alpha4.jar'
-COMPILED=ROOT/'build/libs/oc-hd-panel-0.4.0-alpha1-html.jar'
+COMPILED=ROOT/'build/libs/oc-hd-panel-0.4.0-alpha2-html.jar'
 OUT=ROOT/'build/distributions'
 EXPECTED='6ff5a5bd5a8d7caf0d544d29fb9a8140d3c241a165cea3efa9bb01cfb8578b69'
-VERSION='0.4.0-alpha1-html'
+VERSION='0.4.0-alpha2-html'
 
 def overlay(name):
     stems=['ActionPacket','HdPanelMod','PanelModel','PanelTile','client/ClientProxy','client/DashboardPainter','client/PanelGui','client/BindingPainter','CommonProxy','WebAppModel','WebAssetRequest','WebAssetPacket','client/PanelRenderer','client/WebHostProcess','client/WebScreens','client/WebPanelGui']

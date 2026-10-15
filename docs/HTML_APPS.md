@@ -1,28 +1,28 @@
-# OCHD HTML 应用原型 · 0.4.0-alpha1
+# OCHD HTML 应用原型 · 0.4.0-alpha2
 
 玩家可以上传自己制作的HTML/CSS/JavaScript页面包，网页接收OC数据、提交事件并接收Lua回执。它是通用接口，示例看板不写死在Java中。原有BEC页面、绑定草稿、1080p和墙体布局继续保留。
 
 ## 安装和第一次测试
 
-这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha1-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
+这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha2-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
 
 客户端下载 `ochd-html-client-win-x64.zip`，先把旧OCHD JAR移出mods，再将客户端包解压到游戏目录（有 `mods` 的那层）。包内同时包含新版JAR和浏览器运行时，得到：
 
 ```text
 游戏目录/
-  mods/oc-hd-panel-0.4.0-alpha1-html.jar
+  mods/oc-hd-panel-0.4.0-alpha2-html.jar
   ochd-web-runtime/
     host.jar
     lib/javafx-web.jar
     lib/…
 ```
 
-原型使用OpenJFX 21.0.12 WebKit，在一个独立、无可见窗口的客户端Java进程中运行。JavaFX不加入Minecraft类路径。客户端用Java21启动；如果必须让Minecraft使用另一个Java，可以用JVM参数 `-Dochd.web.java="你的Java21目录/bin/javaw.exe"` 指定浏览器进程。JAR本身保留Java8字节码，服务器不加载JavaFX。Linux/macOS客户端暂不提供运行包；缺少runtime时普通页面仍可用，HTML页显示原因。
+原型使用OpenJFX 21.0.12 WebKit，在一个独立、无可见窗口的客户端Java进程中运行。宿主窗口设为不可聚焦，避免后台启动抢走游戏输入；实际游戏行为仍需验收。JavaFX不加入Minecraft类路径。客户端用Java21启动；如果必须让Minecraft使用另一个Java，可以用JVM参数 `-Dochd.web.java="你的Java21目录/bin/javaw.exe"` 指定浏览器进程。JAR本身保留Java8字节码，服务器不加载JavaFX。Linux/macOS客户端暂不提供运行包；缺少runtime时普通页面仍可用，HTML页显示原因。
 
 在游戏OC中执行：
 
 ```sh
-wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha1-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha2-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
 lua /home/ochd_install_web_demo.lua
 ```
 
