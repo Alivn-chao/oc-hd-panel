@@ -21,11 +21,7 @@ public final class WebCommandQueue {
     public synchronized boolean offer(JsonObject c){
         String key=key(c);
         if(key!=null){Iterator<Entry> it=entries.iterator();while(it.hasNext())if(key.equals(it.next().key))it.remove();}
-        if(entries.size()>=capacity){
-            Iterator<Entry> it=entries.iterator();boolean removed=false;
-            while(it.hasNext())if(it.next().key!=null){it.remove();removed=true;break;}
-            if(!removed)return false;
-        }
+        if(entries.size()>=capacity)return false;
         entries.addLast(new Entry(key,c.toString()));notifyAll();return true;
     }
     /** Host reader may wait; the Minecraft render thread only uses offer. */

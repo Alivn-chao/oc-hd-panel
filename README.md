@@ -1,8 +1,8 @@
 # OCHD HTML 应用原型（开发分支）
 
-新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21/25测试包，版本0.4.0-alpha4-html，尚未GTNH实机验收。
+新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21/25测试包，版本0.4.0-alpha5-html，尚未GTNH实机验收。
 
-[下载HTML原型](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha4-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
+[下载HTML原型](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha5-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
 
 ![真实WebKit离屏渲染，使用测试快照；不是游戏截图](docs/preview-html-app.png)
 

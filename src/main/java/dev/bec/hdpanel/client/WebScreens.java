@@ -54,13 +54,13 @@ public final class WebScreens {
             if(sentZoom!=zoom){JsonObject z=new JsonObject();z.addProperty("type","zoom");z.addProperty("value",zoom);if(host.send(z))sentZoom=zoom;}
             if(!loaded.equals(hash)){JsonObject cmd=new JsonObject();cmd.addProperty("type","load");cmd.add("package",new JsonParser().parse(source));if(host.send(cmd)){loaded=hash;lastValues="";pending=0;}}
             if(!lastValues.equals(tile.values)||lastOnline!=tile.online){JsonObject cmd=new JsonObject();cmd.addProperty("type","data");JsonObject data=new JsonParser().parse(tile.values).getAsJsonObject();data.addProperty("_online",tile.online);cmd.add("data",data);if(host.send(cmd)){lastValues=tile.values;lastOnline=tile.online;}}
-            if(now-lastSnapshot>=(gui?100:500)){JsonObject cmd=new JsonObject();cmd.addProperty("type","snapshot");if(host.send(cmd))lastSnapshot=now;}
-            BufferedImage image=host.frame.getAndSet(null);if(image!=null){if(texture==null){texture=new DynamicTexture(1920,1080);location=Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("ochd-html",texture);}image.getRGB(0,0,1920,1080,texture.getTextureData(),0,1920);texture.updateDynamicTexture();
+            if(now-lastSnapshot>=(gui?16:500)){JsonObject cmd=new JsonObject();cmd.addProperty("type","snapshot");if(host.send(cmd))lastSnapshot=now;}
+            BufferedImage image=host.frame.getAndSet(null);if(image!=null){if(texture==null){texture=new DynamicTexture(1920,1080);location=Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("ochd-html",texture);}if(image.getType()==BufferedImage.TYPE_INT_ARGB)System.arraycopy(((java.awt.image.DataBufferInt)image.getRaster().getDataBuffer()).getData(),0,texture.getTextureData(),0,1920*1080);else image.getRGB(0,0,1920,1080,texture.getTextureData(),0,1920);texture.updateDynamicTexture();
                 Minecraft.getMinecraft().getTextureManager().bindTexture(location);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_LINEAR);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_LINEAR);}
             error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";sentZoom=-1;error="网页运行时无响应，已关闭；稍后重试";}
         }
         public void zoom(double value){if(!Double.isNaN(value)&&!Double.isInfinite(value))zoom=Math.max(.5,Math.min(2.5,value));}
-        public void input(JsonObject command){if(host!=null){command.addProperty("type","input");if(!host.send(command))error="输入繁忙，请稍后重试";}}
+        public void input(JsonObject command){if(host!=null){command.addProperty("type","input");lastSnapshot=0;if(!host.send(command))error="输入繁忙，请稍后重试";}}
         private void event(JsonObject e){
             try{int request=e.get("request").getAsInt();if(request<=0)return;
                 JsonObject packet=new JsonObject();packet.addProperty("hash",hash);packet.add("event",e.get("event"));packet.add("args",e.get("args"));

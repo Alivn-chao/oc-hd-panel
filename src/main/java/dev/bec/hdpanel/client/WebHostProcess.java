@@ -2,6 +2,7 @@ package dev.bec.hdpanel.client;
 
 import com.google.gson.*;
 import dev.bec.hdpanel.WebCommandQueue;
+import dev.bec.hdpanel.WebFrameCodec;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.io.*;
 import java.awt.image.BufferedImage;
@@ -26,13 +27,14 @@ public final class WebHostProcess {
             if(!new File(root,"host.jar").isFile())throw new IOException("缺少网页运行时，请解压客户端 runtime 包到游戏目录/ochd-web-runtime");
             boolean windows=System.getProperty("os.name").toLowerCase().contains("win");
             String java=System.getProperty("ochd.web.java",new File(System.getProperty("java.home"),"bin/"+(windows?"javaw.exe":"java")).getPath());
-            ProcessBuilder builder=new ProcessBuilder(java,"--module-path",new File(root,"lib").getAbsolutePath(),"--add-modules","javafx.web,javafx.swing","-Dprism.order=sw","-cp",new File(root,"host.jar").getAbsolutePath()+File.pathSeparator+new File(root,"lib/gson.jar").getAbsolutePath(),"dev.bec.hdweb.Host");
+            ProcessBuilder builder=new ProcessBuilder(java,"--module-path",new File(root,"lib").getAbsolutePath(),"--add-modules","javafx.web,javafx.swing","-Dprism.order="+System.getProperty("ochd.web.prism","d3d,sw"),"-cp",new File(root,"host.jar").getAbsolutePath()+File.pathSeparator+new File(root,"lib/gson.jar").getAbsolutePath(),"dev.bec.hdweb.Host");
             process=builder.start();if(closed){process.destroy();return;}
             Thread writer=new Thread(new Runnable(){public void run(){writeLoop();}},"OCHD-Web-write");writer.setDaemon(true);writer.start();
             Thread logs=new Thread(new Runnable(){public void run(){try{InputStream in=process.getErrorStream();byte[] b=new byte[1024];int n;while((n=in.read(b))!=-1){String text=new String(b,0,n,"UTF-8");error="网页运行时："+text.substring(Math.max(0,text.length()-220));}}catch(IOException ignored){}}},"OCHD-Web-errors");logs.setDaemon(true);logs.start();
             DataInputStream input=new DataInputStream(new BufferedInputStream(process.getInputStream()));
             while(!closed){int type=input.readUnsignedByte(),size=input.readInt();if(size<0||size>12*1024*1024)throw new IOException("runtime frame limit");byte[] bytes=new byte[size];input.readFully(bytes);lastMessage=System.currentTimeMillis();
                 if(type==1){if(size<24||readInt(bytes,16)!=1920||readInt(bytes,20)!=1080)throw new IOException("runtime image dimensions");BufferedImage image=ImageIO.read(new ByteArrayInputStream(bytes));if(image==null)throw new IOException("invalid PNG");frame.set(image);error="";}
+                else if(type==3){frame.set(WebFrameCodec.decode(bytes));error="";}
                 else if(type==2){JsonObject event=new JsonParser().parse(new String(bytes,"UTF-8")).getAsJsonObject();String kind=event.get("type").getAsString();
                     if("snapshot_done".equals(kind))snapshotPending.set(false);else if("error".equals(kind))error=event.get("message").getAsString();else if("event".equals(kind))events.offer(event);}
             }

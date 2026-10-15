@@ -2,7 +2,7 @@ import json,os,queue,struct,subprocess,threading,time,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 JAVA=Path(os.environ.get('OCHD_TEST_JAVA','C:/Program Files/Microsoft/jdk-21.0.9.10-hotspot/bin/java.exe'))
-cmd=[str(JAVA),'--module-path',str(ROOT/'web-runtime/lib'),'--add-modules','javafx.web,javafx.swing','-Dprism.order=sw','-Dochd.selftest=true','-cp',str(ROOT/'build/web-host.jar')+os.pathsep+str(ROOT/'web-runtime/lib/gson.jar'),'dev.bec.hdweb.Host']
+cmd=[str(JAVA),'--module-path',str(ROOT/'web-runtime/lib'),'--add-modules','javafx.web,javafx.swing','-Dprism.order='+os.environ.get('OCHD_TEST_PRISM','sw'),'-Dochd.selftest=true','-cp',str(ROOT/'build/web-host.jar')+os.pathsep+str(ROOT/'web-runtime/lib/gson.jar'),'dev.bec.hdweb.Host']
 process=subprocess.Popen(cmd,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0));events=queue.Queue()
 def read_exact(n):
  data=b''
@@ -15,7 +15,7 @@ def reader():
  try:
   while True:
    typ=read_exact(1)[0];n=struct.unpack('>I',read_exact(4))[0];assert n<12000000
-   data=read_exact(n);events.put((typ,json.loads(data)if typ==2 else data))
+   data=read_exact(n);typ=1 if typ==3 else typ;events.put((typ,json.loads(data)if typ==2 else data))
  except Exception as e:events.put(('error',str(e)))
 threading.Thread(target=reader,daemon=True).start()
 def send(value):process.stdin.write(json.dumps(value,ensure_ascii=False).encode()+b'\n');process.stdin.flush()
@@ -32,9 +32,16 @@ def wait(wanted,timeout=20):
   deferred.append((typ,obj))
  raise TimeoutError(wanted)
 def evaluate(script):send({'type':'eval','script':script});return wait('eval')['message']
+def as_png(data):
+ if data[:8]==b'\x89PNG\r\n\x1a\n':return data
+ import zlib,io
+ from PIL import Image
+ w,h=struct.unpack('>II',data[:8]);raw=zlib.decompress(data[8:]);assert len(raw)==w*h*4
+ output=io.BytesIO();Image.frombytes('RGBA',(w,h),raw,'raw','ARGB').save(output,format='PNG');return output.getvalue()
+
 try:
  wait('started')
- pack={'id':'test','entry':'index.html','files':{'index.html':"<!doctype html><html><head><link rel='stylesheet' href='style.css'></head><body><h1>OCHD HTML prototype</h1><p id='value'></p><input id='input'><button id='button' onclick='window.clicked=true'>Click test</button><svg width='300' height='80'><rect width='300' height='80' fill='#6688ff'/></svg><canvas id='chart' width='300' height='100'></canvas><script src='main.js'></script></body></html>",'style.css':'body{font:28px sans-serif;background:#eef1f8;color:#203252;padding:40px}input{font:24px sans-serif}','main.js':"OC.onData(function(d){document.getElementById('value').textContent=d.energy;});var ctx=document.getElementById('chart').getContext('2d');ctx.fillStyle='#22bdb8';ctx.fillRect(0,0,250,70);"},'events':['test']}
+ pack={'id':'test','entry':'index.html','files':{'index.html':"<!doctype html><html><head><link rel='stylesheet' href='style.css'></head><body><h1>OCHD HTML prototype</h1><p id='value'></p><input id='input'><button id='button' onclick='window.clicked=true'>Click test</button><svg width='300' height='80'><rect width='300' height='80' fill='#6688ff'/></svg><canvas id='chart' width='300' height='100'></canvas><input id='range' type='range' min='0' max='100' value='0' style='position:fixed;left:40px;top:600px;width:400px'><script src='main.js'></script></body></html>",'style.css':'body{font:28px sans-serif;background:#eef1f8;color:#203252;padding:40px}input{font:24px sans-serif}','main.js':"OC.onData(function(d){document.getElementById('value').textContent=d.energy;});var ctx=document.getElementById('chart').getContext('2d');ctx.fillStyle='#22bdb8';ctx.fillRect(0,0,250,70);"},'events':['test']}
  if '--render-demo' in sys.argv:
   pack=json.loads((ROOT/'web-demo/app.json').read_text(encoding='utf-8'));pack['files']={name:(ROOT/'web-demo'/name).read_text(encoding='utf-8')for name in pack['files']}
   send({'type':'load','package':pack});wait('ready')
@@ -48,7 +55,7 @@ try:
   assert event['event']=='set_target'and event['args']['target']==144000
   send({'type':'ack','data':{'request':event['request'],'ok':True,'message':'目标已保存（离屏接口测试）'}});time.sleep(.1)
   assert '离屏接口测试' in evaluate("document.getElementById('notice').textContent")
-  send({'type':'snapshot'});png=wait('frame');(ROOT/'build/web-demo-preview.png').write_bytes(png)
+  send({'type':'snapshot'});png=as_png(wait('frame'));(ROOT/'build/web-demo-preview.png').write_bytes(png)
   print('Rendered real HTML demo');raise SystemExit(0)
  send({'type':'load','package':pack});wait('ready')
  assert evaluate('typeof OC')=='object'
@@ -78,6 +85,14 @@ try:
  assert evaluate('window.clicked')=='true','zoomed mouse coordinates must match button'
  send({'type':'zoom','value':1});time.sleep(.1)
  assert float(evaluate('window.innerWidth'))==before
+ # Actual HTML range dragging, with updated frames throughout the gesture.
+ rect=json.loads(evaluate("JSON.stringify((function(){var r=document.getElementById('range').getBoundingClientRect();return {x:r.x+8,y:r.y+r.height/2};})())"))
+ send(dict(type='input',kind='down',**rect))
+ for step in range(1,9):
+  send({'type':'input','kind':'move','x':rect['x']+step*45,'y':rect['y']})
+  send({'type':'snapshot'});wait('frame')
+ send({'type':'input','kind':'up','x':rect['x']+360,'y':rect['y']})
+ assert int(evaluate("document.getElementById('range').value"))>=85,'range must follow drag'
  # Raw protocol saturation also must preserve discrete input; no silent queue drops.
  evaluate("window.clicked=false;document.getElementById('button').onclick=function(){window.clicked=true;OC.emit('stress_click',{value:99});}")
  for i in range(4000):
@@ -87,10 +102,10 @@ try:
  send(dict(type='input',kind='down',**rect));send(dict(type='input',kind='up',**rect));clicked=wait('event')
  assert clicked['event']=='stress_click'and clicked['args']['value']==99
  assert evaluate('window.clicked')=='true'
- send({'type':'snapshot'});png=wait('frame');assert png[:8]==b'\x89PNG\r\n\x1a\n'
+ send({'type':'snapshot'});png=as_png(wait('frame'));assert png[:8]==b'\x89PNG\r\n\x1a\n'
  assert struct.unpack('>II',png[16:24])==(1920,1080)
  (ROOT/'build/web-host-preview.png').write_bytes(png)
- print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, raw input saturation followed by click, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
+ print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, range drag, raw input saturation followed by click, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
 finally:
  try:send({'type':'close'});process.wait(timeout=5)
  except Exception:process.kill()
