@@ -1,8 +1,8 @@
 # OCHD HTML 应用原型（开发分支）
 
-新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21测试包，版本0.4.0-alpha2-html，尚未GTNH实机验收。
+新增 [HTML页面包与OC通信接口](docs/HTML_APPS.md)：玩家上传HTML/CSS/JavaScript，Lua推送数据、接收事件；独立WebKit客户端渲染。Windows x64 + Java21测试包，版本0.4.0-alpha3-html，尚未GTNH实机验收。
 
-[下载HTML原型](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha2-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
+[下载HTML原型](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.4.0-alpha3-html) · [继续使用原绑定版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.3.2-alpha4-drafts)
 
 ![真实WebKit离屏渲染，使用测试快照；不是游戏截图](docs/preview-html-app.png)
 
@@ -25,7 +25,7 @@
 3. 放置时正面朝向放置者。同朝向、同一平面、相邻的高清面板组成完整矩形后，约 20 个服务器 tick 内自动拼为一面屏幕墙；最大 8 列 × 6 行。建议先搭完整屏幕，再接入 OC 电脑并运行程序。
 4. 用 OC 线缆连接屏幕墙。拼接后只有一个可见的 `hd_panel` 组件。不要给同一面墙同时绑定多个程序或电脑；已分别绑定的屏幕不会直接合并。改变形状前先停止程序并 `release()`，完成后重新枚举组件地址。
 5. 将 `oc/automation_demo.lua` 复制到**游戏 OC 电脑** `/home/automation_demo.lua`，运行 `lua /home/automation_demo.lua`。这是模拟数据，不访问真实机器。Q 退出并解除绑定。
-6. 右键墙上任意高清面板打开紧凑窗口，默认宽度约为游戏窗口的 45%，周围仍可见游戏世界。F6 切换大窗口，Esc 关闭；打开 GUI 不暂停服务器。
+6. 右键墙上任意高清面板打开大窗口，右上角「还原窗口 / 全屏显示」按钮或 F6 切换显示大小，Esc 关闭；打开 GUI 不暂停服务器。
 
 只有本模组新增的高清面板能互相拼接，不能与原版 OC 屏幕混拼。不完整矩形、超过尺寸上限、朝向不同或多个独立绑定者会保留为单屏；方块被拆除后会重新计算。原版 OC 屏幕与显卡仍按原来的方式工作。
 

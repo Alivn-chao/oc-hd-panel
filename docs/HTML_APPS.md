@@ -1,16 +1,16 @@
-# OCHD HTML 应用原型 · 0.4.0-alpha2
+# OCHD HTML 应用原型 · 0.4.0-alpha3
 
 玩家可以上传自己制作的HTML/CSS/JavaScript页面包，网页接收OC数据、提交事件并接收Lua回执。它是通用接口，示例看板不写死在Java中。原有BEC页面、绑定草稿、1080p和墙体布局继续保留。
 
 ## 安装和第一次测试
 
-这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha2-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
+这是独立测试版。先退出占用该屏幕的OC页面程序。客户端与服务器都替换为 `oc-hd-panel-0.4.0-alpha3-html.jar`，两端不要同时保留旧JAR。服务器无需浏览器运行时；客户端目前只提供 **Windows x64 + Java 21** 已测运行时。
 
 客户端下载 `ochd-html-client-win-x64.zip`，先把旧OCHD JAR移出mods，再将客户端包解压到游戏目录（有 `mods` 的那层）。包内同时包含新版JAR和浏览器运行时，得到：
 
 ```text
 游戏目录/
-  mods/oc-hd-panel-0.4.0-alpha2-html.jar
+  mods/oc-hd-panel-0.4.0-alpha3-html.jar
   ochd-web-runtime/
     host.jar
     lib/javafx-web.jar
@@ -22,7 +22,7 @@
 在游戏OC中执行：
 
 ```sh
-wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha2-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha3-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
 lua /home/ochd_install_web_demo.lua
 ```
 
@@ -32,7 +32,7 @@ lua /home/ochd_install_web_demo.lua
 lua /home/ochd_web_demo.lua
 ```
 
-示例要求OC只接入一块OCHD墙的主组件。右键屏幕可输入、Ctrl+V粘贴、点按钮，Esc退出交互，F6缩放；在OC键盘按Q停止示例并释放屏幕。示例实际读取 `computer.uptime/freeMemory/totalMemory`，网页“保存目标”仅修改本程序的演示参数，不控制机器。
+示例要求OC只接入一块OCHD墙的主组件。右键屏幕可输入、Ctrl+V粘贴、点按钮，Esc退出交互，F6切换全屏；在OC键盘按Q停止示例并释放屏幕。示例实际读取 `computer.uptime/freeMemory/totalMemory`，网页“保存目标”仅修改本程序的演示参数，不控制机器。
 
 ## 页面包
 
@@ -120,3 +120,9 @@ panel.ack(requestId,true,'保存完成')
 浏览器API参考 [OpenJFX WebEngine](https://openjfx.io/javadoc/21/javafx.web/javafx/scene/web/WebEngine.html)。运行包附OpenJFX和Gson原始许可，依赖URL/摘要见web-runtime manifests；Host源码包含在运行包中。`tools/web/build_runtime.py`使用Java21构建。
 
 已经通过真实Windows WebKit离屏测试：加载多文件HTML/CSS/JS、OC快照进入DOM、事件/ack Promise、鼠标点击、数字键入、粘贴、SVG/Canvas和1920×1080 PNG。Java协议/边界测试及Lua解析/示例流程模拟通过；实际Minecraft侧的进程启动器、PNG读取和事件队列也通过独立进程探针验证。**尚未在实际GTNH客户端/专用服务器验证**，不能将离屏渲染或模拟称为游戏验收。
+
+## 网页显示与缩放
+
+右键网页屏幕默认铺满可用窗口，顶部浅色蓝色工具栏提供「全屏显示/还原窗口」、缩小、当前比例、放大、「重置」和「返回」。保留16:9画面比例，因此部分窗口有留边。默认网页缩放125%，支持50%–250%，每次25%；缩放改变实际浏览器页面布局，鼠标和输入仍对应页面。F6切换显示区域，Ctrl+滚轮或Ctrl+加减号调整页面缩放，Ctrl+0或「重置」回到100%。这两个设置仅保存在本次客户端会话，不修改OC或机器配置。
+
+原有 BEC 看板也默认打开大窗口，右上角提供「全屏显示 / 还原窗口」按钮，绑定页同样可用。

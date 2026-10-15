@@ -58,6 +58,7 @@ public final class Host {
         String type=c.get("type").getAsString();
         if(type.equals("load")){loaded=false;engine.loadContent(document(c.getAsJsonObject("package")));}
         else if(type.equals("data")){latest=c.get("data").toString();data();}
+        else if(type.equals("zoom")){double z=c.get("value").getAsDouble();if(Double.isFinite(z))view.setZoom(Math.max(.5,Math.min(2.5,z)));}
         else if(type.equals("snapshot"))snapshot();
         else if(type.equals("ack"))engine.executeScript("window.__ochdAck&&window.__ochdAck("+c.get("data").toString()+");");
         else if(type.equals("input"))input(c);

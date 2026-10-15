@@ -41,7 +41,7 @@ public final class WebScreens {
     }
     public static void reply(ActionReplyPacket reply){if(current!=null&&reply.x==current.tile.xCoord&&reply.y==current.tile.yCoord&&reply.z==current.tile.zCoord)current.reply(reply);}
     public static final class View {
-        public final PanelTile tile;private WebHostProcess host;private String hash="",lastValues="",loaded="";private boolean lastOnline;
+        public final PanelTile tile;private WebHostProcess host;private String hash="",lastValues="",loaded="";private boolean lastOnline;private double zoom=1,sentZoom=-1;
         private DynamicTexture texture;private ResourceLocation location;private long lastUsed,lastSnapshot,lastLoadTry,lastEvent;private int pending,browserRequest;
         public String error="正在下载页面包…";
         private View(PanelTile tile){this.tile=tile;}
@@ -51,13 +51,15 @@ public final class WebScreens {
             long now=System.currentTimeMillis();String source=CACHE.get(hash);
             if(source==null){if(!REQUESTS.containsKey(hash)){REQUESTS.put(hash,now);HdPanelMod.NETWORK.sendToServer(new WebAssetRequest(tile,hash));}return;}
             if(host==null){if(now-lastLoadTry<10000)return;lastLoadTry=now;host=new WebHostProcess(new File(Minecraft.getMinecraft().mcDataDir,"ochd-web-runtime"));}
+            if(sentZoom!=zoom){JsonObject z=new JsonObject();z.addProperty("type","zoom");z.addProperty("value",zoom);if(host.send(z))sentZoom=zoom;}
             if(!loaded.equals(hash)){JsonObject cmd=new JsonObject();cmd.addProperty("type","load");cmd.add("package",new JsonParser().parse(source));if(host.send(cmd)){loaded=hash;lastValues="";pending=0;}}
             if(!lastValues.equals(tile.values)||lastOnline!=tile.online){JsonObject cmd=new JsonObject();cmd.addProperty("type","data");JsonObject data=new JsonParser().parse(tile.values).getAsJsonObject();data.addProperty("_online",tile.online);cmd.add("data",data);if(host.send(cmd)){lastValues=tile.values;lastOnline=tile.online;}}
             if(now-lastSnapshot>=(gui?100:500)){JsonObject cmd=new JsonObject();cmd.addProperty("type","snapshot");if(host.send(cmd))lastSnapshot=now;}
             BufferedImage image=host.frame.getAndSet(null);if(image!=null){if(texture==null){texture=new DynamicTexture(1920,1080);location=Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("ochd-html",texture);}image.getRGB(0,0,1920,1080,texture.getTextureData(),0,1920);texture.updateDynamicTexture();
                 Minecraft.getMinecraft().getTextureManager().bindTexture(location);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_LINEAR);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_LINEAR);}
-            error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";error="网页运行时无响应，已关闭；稍后重试";}
+            error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";sentZoom=-1;error="网页运行时无响应，已关闭；稍后重试";}
         }
+        public void zoom(double value){if(!Double.isNaN(value)&&!Double.isInfinite(value))zoom=Math.max(.5,Math.min(2.5,value));}
         public void input(JsonObject command){if(host!=null){command.addProperty("type","input");host.send(command);}}
         private void event(JsonObject e){
             try{int request=e.get("request").getAsInt();if(request<=0)return;

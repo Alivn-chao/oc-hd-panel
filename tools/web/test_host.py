@@ -68,10 +68,20 @@ try:
  rect=json.loads(evaluate("JSON.stringify((function(){var r=document.getElementById('button').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})())"))
  send(dict(type='input',kind='down',**rect));send(dict(type='input',kind='up',**rect))
  assert evaluate('window.clicked')=='true'
+ # CSS coordinates shrink with WebView zoom; GUI input stays in physical viewport coordinates.
+ before=float(evaluate('window.innerWidth'))
+ send({'type':'zoom','value':1.5});time.sleep(.15)
+ assert float(evaluate('window.innerWidth')) < before
+ evaluate('window.clicked=false')
+ rect=json.loads(evaluate("JSON.stringify((function(){var r=document.getElementById('button').getBoundingClientRect();return {x:(r.x+r.width/2)*1.5,y:(r.y+r.height/2)*1.5};})())"))
+ send(dict(type='input',kind='down',**rect));send(dict(type='input',kind='up',**rect))
+ assert evaluate('window.clicked')=='true','zoomed mouse coordinates must match button'
+ send({'type':'zoom','value':1});time.sleep(.1)
+ assert float(evaluate('window.innerWidth'))==before
  send({'type':'snapshot'});png=wait('frame');assert png[:8]==b'\x89PNG\r\n\x1a\n'
  assert struct.unpack('>II',png[16:24])==(1920,1080)
  (ROOT/'build/web-host-preview.png').write_bytes(png)
- print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, SVG/canvas and 1080p PNG')
+ print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
 finally:
  try:send({'type':'close'});process.wait(timeout=5)
  except Exception:process.kill()
