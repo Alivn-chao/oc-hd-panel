@@ -3,7 +3,10 @@ local c=require('component');local event=require('event');local computer=require
 local W=assert(loadfile('/home/ochd_web.lua'))();local address,count=nil,0
 for a in c.list('hd_panel',true)do address=a;count=count+1 end
 assert(count==1,'示例请只接入一块OCHD墙的主组件')
-local panel=c.proxy(address);assert(type(panel.setWebApp)=='function'and type(panel.publish)=='function','请先更新客户端和服务器的HTML原型JAR');local package=W.package('/home/ochd_apps/demo')
+-- OC callbacks are callable tables, not necessarily Lua functions.
+local methods=assert(c.methods(address))
+assert(methods.setWebApp~=nil and methods.publish~=nil,'当前OCHD缺少HTML接口：请检查实际加载的JAR并重启游戏/服务器')
+local panel=c.proxy(address);local package=W.package('/home/ochd_apps/demo')
 while true do local ok,reason=panel.setWebApp(package);assert(ok~=nil,reason);if ok then break end;event.pull(0.6)end
 print('HTML示例已上传。右键OCHD进行交互，OC键盘Q退出。示例不控制机器。')
 local target,counter,nextPush=144000,0,0
@@ -27,4 +30,4 @@ local ok,reason=xpcall(function()
   end
  end
 end,debug.traceback)
-pcall(panel.release);assert(ok,reason)
+pcall(function()panel.release()end);assert(ok,reason)

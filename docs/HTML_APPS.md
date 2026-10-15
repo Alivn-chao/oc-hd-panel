@@ -22,7 +22,7 @@
 在游戏OC中执行：
 
 ```sh
-wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha3-html/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@v0.4.0-alpha3-lua-fix1/oc/install_web_demo.lua /home/ochd_install_web_demo.lua
 lua /home/ochd_install_web_demo.lua
 ```
 
@@ -126,3 +126,7 @@ panel.ack(requestId,true,'保存完成')
 右键网页屏幕默认铺满可用窗口，顶部浅色蓝色工具栏提供「全屏显示/还原窗口」、缩小、当前比例、放大、「重置」和「返回」。保留16:9画面比例，因此部分窗口有留边。默认网页缩放125%，支持50%–250%，每次25%；缩放改变实际浏览器页面布局，鼠标和输入仍对应页面。F6切换显示区域，Ctrl+滚轮或Ctrl+加减号调整页面缩放，Ctrl+0或「重置」回到100%。这两个设置仅保存在本次客户端会话，不修改OC或机器配置。
 
 原有 BEC 看板也默认打开大窗口，右上角提供「全屏显示 / 还原窗口」按钮，绑定页同样可用。
+
+### alpha3 OC示例修复
+
+OC组件回调是带有 `__call` 的table，旧示例只允许function，导致已装正确alpha3 JAR也误报版本不符。`v0.4.0-alpha3-lua-fix1` 改用 `component.methods` 判断接口是否存在（支持false表示非direct方法），无需替换JAR或浏览器运行时。重新下载上面的安装器并运行，再启动示例即可。

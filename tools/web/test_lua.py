@@ -37,7 +37,10 @@ class WebLuaTests(unittest.TestCase):
         package.preload.computer=function()return {uptime=function()return now end,freeMemory=function()return 1024 end,totalMemory=function()return 4096 end}end
         local panel={setWebApp=function(p)assert(p==pack);return true end,publish=function(data)published[#published+1]=data;return true end,
          ack=function(request,ok,message)assert(request==9 and ok);acked=true end,release=function()released=released+1 end}
-        package.preload.component=function()return {list=function()local once=true;return function()if once then once=false;return 'panel'end end end,proxy=function()return panel end}end
+        -- Match the actual OpenComputers machine.lua callback representation.
+        for name,fn in pairs(panel)do panel[name]=setmetatable({callback=fn},{__call=function(self,...)return self.callback(...)end})end
+        assert(type(panel.setWebApp)=='table')
+        package.preload.component=function()return {methods=function()return {setWebApp=false,publish=false,ack=false,release=false}end,list=function()local once=true;return function()if once then once=false;return 'panel'end end end,proxy=function()return panel end}end
         package.preload.event=function()return {pull=function(dt)now=now+1;pulls=pulls+1
          if pulls==1 then return 'hd_panel_web','panel','set_target','player',9,'{"target":123}'end
          if pulls==3 then return 'key_down','keyboard',113,16 end
