@@ -3,7 +3,7 @@ plugins {
     id 'com.gtnewhorizons.retrofuturagradle' version '2.0.5'
 }
 group = 'dev.bec.hdpanel'
-version = '0.4.0-alpha5-html'
+version = '0.4.0-alpha7-html'
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -21,6 +21,7 @@ repositories {
 }
 dependencies {
     compileOnly(rfg.deobf(project.files('libs/OpenComputers-1.12.61-GTNH.jar')))
+    compileOnly files('libs/CoFHCore.jar', 'libs/IC2.jar', 'libs/AE2.jar')
     testImplementation 'junit:junit:4.13.2'
 }
 tasks.withType(JavaCompile).configureEach {

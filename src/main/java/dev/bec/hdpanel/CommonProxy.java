@@ -11,6 +11,7 @@ public class CommonProxy {
     private static final ConcurrentLinkedQueue<Runnable> TASKS = new ConcurrentLinkedQueue<Runnable>();
     public void init() { FMLCommonHandler.instance().bus().register(this); }
     public void open(PanelTile tile) { }
+    public void openSettings(PanelTile tile) { }
     public static void enqueue(Runnable task) { if (TASKS.size() < 128) TASKS.add(task); }
     @SubscribeEvent
     public void tick(TickEvent.ServerTickEvent event) {

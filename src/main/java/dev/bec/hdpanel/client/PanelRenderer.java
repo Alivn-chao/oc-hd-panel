@@ -12,6 +12,7 @@ public class PanelRenderer extends TileEntitySpecialRenderer {
     @Override public void renderTileEntityAt(TileEntity entity, double x, double y, double z, float partial) {
         PanelTile tile = (PanelTile) entity;
         Minecraft mc = Minecraft.getMinecraft();
+        if(!tile.displayActive())return;
         if (mc.thePlayer == null || tile.master().distanceSq(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ) > 1024) return;
         net.minecraft.util.ResourceLocation texture;
         if("web".equals(tile.master().app)){WebScreens.View view=WebScreens.get(tile,false);texture=view==null?null:view.location();}
@@ -31,7 +32,7 @@ public class PanelRenderer extends TileEntitySpecialRenderer {
             t.setColorOpaque_F(.04F,.05F,.07F);
             t.addVertex(left,bottom,.501);t.addVertex(right,bottom,.501);t.addVertex(right,top,.501);t.addVertex(left,top,.501);t.draw();
             double[] s=new WallGeometry(tile.wallWidth,tile.wallHeight).slice(tile.column,tile.row);if(s==null)return;
-            GL11.glEnable(GL11.GL_TEXTURE_2D);bindTexture(texture);t.startDrawingQuads();t.setColorOpaque_F(1,1,1);t.setBrightness(0xF000F0);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);bindTexture(texture);t.startDrawingQuads();float brightness=tile.displayBrightness();t.setColorOpaque_F(brightness,brightness,brightness);t.setBrightness(0xF000F0);
             t.addVertexWithUV(s[0],s[1],.502,s[4],s[7]);t.addVertexWithUV(s[2],s[1],.502,s[6],s[7]);
             t.addVertexWithUV(s[2],s[3],.502,s[6],s[5]);t.addVertexWithUV(s[0],s[3],.502,s[4],s[5]);
             t.draw();

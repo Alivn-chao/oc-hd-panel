@@ -16,7 +16,120 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 
-public class PanelTile extends TileEntityEnvironment {
+@cpw.mods.fml.common.Optional.InterfaceList({
+    @cpw.mods.fml.common.Optional.Interface(iface="cofh.api.energy.IEnergyReceiver",modid="CoFHCore"),
+    @cpw.mods.fml.common.Optional.Interface(iface="ic2.api.energy.tile.IEnergySink",modid="IC2"),
+    @cpw.mods.fml.common.Optional.Interface(iface="appeng.api.networking.IGridHost",modid="appliedenergistics2")})
+public class PanelTile extends TileEntityEnvironment implements cofh.api.energy.IEnergyReceiver,ic2.api.energy.tile.IEnergySink,appeng.api.networking.IGridHost {
+    private final PanelPower battery=new PanelPower();
+    public boolean screenEnabled=true,powered;
+    public int brightness=100,rfStored,rfCapacity=PanelPower.capacity,rfPerTick=PanelPower.fullBrightnessCost;
+    public double ocStored,ocCapacity;
+    private boolean euRegistered;
+    private Object aeGrid;
+    private NBTTagCompound aeSaved=new NBTTagCompound();
+    private boolean aeSecurityBlocked;
+    private double ocPerRF(){return li.cil.oc.Settings.get().ratioRedstoneFlux();}
+    private double rfPerEU(){return PanelPower.rfPerEU(li.cil.oc.Settings.get().ratioIndustrialCraft2(),ocPerRF());}
+    private boolean acceptsPowerSide(net.minecraftforge.common.util.ForgeDirection from){return from!=null&&from!=net.minecraftforge.common.util.ForgeDirection.UNKNOWN&&from.ordinal()!=PanelFacing.front(getBlockMetadata());}
+    private long lastSettings=-100;
+    public boolean displayActive(){PanelTile owner=master();return owner.screenEnabled&&owner.powered;}
+    public float displayBrightness(){return master().brightness/100F;}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="CoFHCore")
+    public boolean canConnectEnergy(net.minecraftforge.common.util.ForgeDirection from){return acceptsPowerSide(from);}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="CoFHCore")
+    public int receiveEnergy(net.minecraftforge.common.util.ForgeDirection from,int amount,boolean simulate){
+        if(worldObj==null||worldObj.isRemote||!acceptsPowerSide(from))return 0;
+        return receiveSharedRF(amount,simulate);
+    }
+    private int receiveSharedRF(int amount,boolean simulate){
+        java.util.List<PanelTile> cells=master().wallCells();
+        int accepted=PanelPower.receive(batteries(cells),amount,simulate);
+        if(accepted>0&&!simulate)for(PanelTile cell:cells)cell.markDirty();return accepted;
+    }
+    @Override @cpw.mods.fml.common.Optional.Method(modid="CoFHCore")
+    public int getEnergyStored(net.minecraftforge.common.util.ForgeDirection from){return worldObj==null?battery.stored():worldObj.isRemote?master().rfStored:PanelPower.total(batteries(master().wallCells()));}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="CoFHCore")
+    public int getMaxEnergyStored(net.minecraftforge.common.util.ForgeDirection from){return master().wallWidth*master().wallHeight*PanelPower.capacity;}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    public boolean acceptsEnergyFrom(TileEntity emitter,net.minecraftforge.common.util.ForgeDirection side){return acceptsPowerSide(side);}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    public int getSinkTier(){return PanelPower.euSinkTier;}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    public double getDemandedEnergy(){double factor=rfPerEU();return worldObj==null||worldObj.isRemote||factor<=0?0:receiveSharedRF(Integer.MAX_VALUE,true)/factor;}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    public double injectEnergy(net.minecraftforge.common.util.ForgeDirection from,double amount,double voltage){
+        if(worldObj==null||worldObj.isRemote||!acceptsPowerSide(from))return amount;
+        double factor=rfPerEU();int rf=PanelPower.equivalentRF(amount,factor,PanelPower.maxReceive);
+        return rf==0?amount:Math.max(0,amount-receiveSharedRF(rf,false)/factor);
+    }
+    @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    private void joinEU(){if(!euRegistered){net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new ic2.api.energy.event.EnergyTileLoadEvent(this));euRegistered=true;}}
+    @cpw.mods.fml.common.Optional.Method(modid="IC2")
+    private void leaveEU(){if(euRegistered){net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new ic2.api.energy.event.EnergyTileUnloadEvent(this));euRegistered=false;}}
+    private void disconnectPower(){if(worldObj!=null&&!worldObj.isRemote){if(cpw.mods.fml.common.Loader.isModLoaded("IC2"))leaveEU();if(cpw.mods.fml.common.Loader.isModLoaded("appliedenergistics2"))leaveAE();}}
+    @Override public void invalidate(){disconnectPower();super.invalidate();}
+    @Override public void onChunkUnload(){disconnectPower();super.onChunkUnload();}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    private PanelAEGrid ae(){if(aeGrid==null)aeGrid=new PanelAEGrid(this,aeSaved);return (PanelAEGrid)aeGrid;}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    private void joinAE(){if(!aeSecurityBlocked)ae().ready();}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    private void leaveAE(){if(aeGrid!=null){((PanelAEGrid)aeGrid).save(aeSaved);((PanelAEGrid)aeGrid).destroy();aeGrid=null;}}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    public appeng.api.networking.IGridNode getGridNode(net.minecraftforge.common.util.ForgeDirection side){return worldObj==null||worldObj.isRemote||aeSecurityBlocked||(side!=net.minecraftforge.common.util.ForgeDirection.UNKNOWN&&!acceptsPowerSide(side))?null:ae().node();}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    public appeng.api.util.AECableType getCableConnectionType(net.minecraftforge.common.util.ForgeDirection side){return acceptsPowerSide(side)?appeng.api.util.AECableType.GLASS:appeng.api.util.AECableType.NONE;}
+    @Override @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    public void securityBreak(){aeSecurityBlocked=true;leaveAE();markDirty();}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    public void aeOwner(EntityPlayer player){ae().owner(player);markDirty();}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    private void saveAE(){if(aeGrid!=null)((PanelAEGrid)aeGrid).save(aeSaved);}
+    @cpw.mods.fml.common.Optional.Method(modid="appliedenergistics2")
+    private void topUpAE(java.util.List<PanelTile> cells,int needed){
+        int room=receiveSharedRF(needed,true);if(room<=0||needed<=0)return;
+        double factor=PanelPower.rfPerEU(li.cil.oc.Settings.get().ratioAppliedEnergistics2(),ocPerRF());
+        for(PanelTile cell:cells){if(cell.aeGrid==null||cell.aeSecurityBlocked)continue;int rf=((PanelAEGrid)cell.aeGrid).drawRF(room,factor);if(rf>0){receiveSharedRF(rf,false);return;}}
+    }
+    private static PanelPower[] batteries(java.util.List<PanelTile> cells){PanelPower[] result=new PanelPower[cells.size()];for(int i=0;i<result.length;i++)result[i]=cells.get(i).battery;return result;}
+    private java.util.List<PanelTile> wallCells(){
+        java.util.List<PanelTile> cells=new java.util.ArrayList<PanelTile>();
+        int meta=getBlockMetadata(),dx=meta==0?1:meta==2?-1:0,dz=meta==1?-1:meta==3?1:0;
+        for(int col=0;col<wallWidth;col++)for(int r=0;r<wallHeight;r++){
+            int x=xCoord+dx*(col-column),y=yCoord+r-row,z=zCoord+dz*(col-column);
+            if(!worldObj.blockExists(x,y,z))continue;
+            TileEntity entity=worldObj.getTileEntity(x,y,z);
+            if(entity instanceof PanelTile&&entity.getBlockMetadata()==meta&&((PanelTile)entity).master()==this)cells.add((PanelTile)entity);
+        }return cells;
+    }
+    private void powerTick(long now){
+        if(master()!=this)return;
+        java.util.List<PanelTile> cells=wallCells();PanelPower[] batteries=batteries(cells);
+        rfPerTick=PanelPower.cost(wallWidth*wallHeight,brightness);rfCapacity=wallWidth*wallHeight*PanelPower.capacity;
+        final li.cil.oc.api.network.Connector connector=node instanceof li.cil.oc.api.network.Connector?(li.cil.oc.api.network.Connector)node:null;
+        boolean next=screenEnabled&&cells.size()==wallWidth*wallHeight&&PanelPower.consumeMixed(batteries,rfPerTick,ocPerRF(),new PanelPower.ExternalPower(){
+            public boolean tryConsume(double amount){return connector!=null&&connector.tryChangeBuffer(-amount);}
+        });
+        if(!next&&screenEnabled&&cells.size()==wallWidth*wallHeight&&cpw.mods.fml.common.Loader.isModLoaded("appliedenergistics2")){
+            topUpAE(cells,Math.max(0,rfPerTick-PanelPower.total(batteries)));next=PanelPower.consume(batteries,rfPerTick);
+        }
+        if(next)for(PanelTile cell:cells)cell.markDirty();
+        rfStored=PanelPower.total(batteries);
+        ocStored=connector==null?0:connector.globalBuffer();ocCapacity=connector==null?0:connector.globalBufferSize();
+        if(next!=powered){powered=next;dirty=true;worldObj.markBlockForUpdate(xCoord,yCoord,zCoord);if(!next)finish(false,"屏幕已关闭或RF不足，请核对操作结果");}
+        if(now%20==0)dirty=true;
+    }
+    public void settings(EntityPlayerMP player,boolean enabled,int level){
+        PanelTile owner=master();if(owner!=this){owner.settings(player,enabled,level);return;}
+        long now=worldObj.getTotalWorldTime();
+        if(worldObj.isRemote||distanceSq(player.posX,player.posY,player.posZ)>64||now-lastSettings<2
+            ||!worldObj.canMineBlock(player,xCoord,yCoord,zCoord)||!player.canPlayerEdit(xCoord,yCoord,zCoord,1,player.getHeldItem())
+            ||(controller!=null&&!controller.canInteract(player.getCommandSenderName())))return;
+        lastSettings=now;
+        if(!enabled)finish(false,"屏幕已关闭，请核对操作结果");
+        for(PanelTile cell:wallCells()){cell.screenEnabled=enabled;cell.brightness=PanelPower.brightness(level);if(!enabled)cell.powered=false;cell.markDirty();worldObj.markBlockForUpdate(cell.xCoord,cell.yCoord,cell.zCoord);}
+    }
     public String payload = "{}";
     public long revision;
     public boolean online;
@@ -46,6 +159,7 @@ public class PanelTile extends TileEntityEnvironment {
     void configureWall(PanelTile owner,int width,int height,int col,int r) {
         if(!wallConfigured||masterX!=owner.xCoord||masterY!=owner.yCoord||masterZ!=owner.zCoord||wallWidth!=width||wallHeight!=height||column!=col||row!=r) {
             masterX=owner.xCoord;masterY=owner.yCoord;masterZ=owner.zCoord;wallWidth=width;wallHeight=height;column=col;row=r;wallConfigured=true;dirty=true;markDirty();
+            screenEnabled=owner.screenEnabled;brightness=owner.brightness;powered=false;
         }
         if(node instanceof Component)((Component)node).setVisibility(owner==this?Visibility.Network:Visibility.None);
     }
@@ -133,7 +247,7 @@ public class PanelTile extends TileEntityEnvironment {
     }
 
     public PanelTile() {
-        node = Network.newNode(this, Visibility.Network).withComponent("hd_panel", Visibility.Network).create();
+        node = Network.newNode(this, Visibility.Network).withComponent("hd_panel", Visibility.Network).withConnector(0).create();
     }
     @Callback(doc = "setPage(name:string):boolean -- Select bec_dashboard.")
     public Object[] setPage(Context context, Arguments args) {
@@ -173,8 +287,11 @@ public class PanelTile extends TileEntityEnvironment {
     @Override public void updateEntity() {
         if (worldObj.isRemote) return;
         super.updateEntity();
+        if(cpw.mods.fml.common.Loader.isModLoaded("IC2"))joinEU();
+        if(cpw.mods.fml.common.Loader.isModLoaded("appliedenergistics2"))joinAE();
         long now = worldObj.getTotalWorldTime();
         if(now-wallChecked>=20)WallAssembly.rebuild(this,now);
+        powerTick(now);
         if (pendingRequest != 0 && now - pendingSince > 160) finish(false, "未收到 OC 回执；请核对状态后重试");
         if (online && (now - lastUpdate > 100 || controller == null || !controller.isRunning())) {
             online = false; dirty = true;
@@ -187,6 +304,7 @@ public class PanelTile extends TileEntityEnvironment {
     }
     public void action(EntityPlayerMP player, int action, int request, int value,String widget) {
         if (worldObj.isRemote || action < 0 || action > 8 || request<=0 || value<0 || master()!=this) return;
+        if(!displayActive()){reply(player,request,2,"屏幕已关闭或RF不足");return;}
         if (!online || controller==null) { reply(player, request, 2, "面板离线，无法提交"); return; }
         if (distanceSq(player.posX,player.posY,player.posZ) > 64
                 || !controller.canInteract(player.getCommandSenderName())) {
@@ -216,6 +334,9 @@ public class PanelTile extends TileEntityEnvironment {
         NBTTagCompound nbt = new NBTTagCompound();
         nbt.setString("data", payload); nbt.setLong("revision", revision); nbt.setBoolean("online", online);
         nbt.setString("app",app);nbt.setString("layout",layout);nbt.setString("values",values);
+        nbt.setBoolean("screenEnabled",screenEnabled);nbt.setBoolean("powered",powered);nbt.setInteger("brightness",brightness);
+        nbt.setInteger("rfStored",rfStored);nbt.setInteger("rfCapacity",rfCapacity);nbt.setInteger("rfPerTick",rfPerTick);
+        nbt.setDouble("ocStored",ocStored);nbt.setDouble("ocCapacity",ocCapacity);
         nbt.setInteger("wallWidth",wallWidth);nbt.setInteger("wallHeight",wallHeight);nbt.setInteger("column",column);nbt.setInteger("row",row);
         nbt.setInteger("masterX",wallConfigured?masterX:xCoord);nbt.setInteger("masterY",wallConfigured?masterY:yCoord);nbt.setInteger("masterZ",wallConfigured?masterZ:zCoord);
         return nbt;
@@ -236,14 +357,23 @@ public class PanelTile extends TileEntityEnvironment {
         controllerAddress = nbt.getString("controller"); online = false;
         byte[] web=nbt.getByteArray("webPackage");webPackage=web.length<=WebAppModel.MAX_PACKAGE?new String(web,java.nio.charset.StandardCharsets.UTF_8):"";
         readDisplay(nbt);
+        battery.restore(nbt.getInteger("localRF"));powered=false;
+        aeSaved=(NBTTagCompound)nbt.getCompoundTag("aePowerNode").copy();aeSecurityBlocked=nbt.getBoolean("aeSecurityBlocked");
     }
     @Override public void writeToNBT(NBTTagCompound nbt) {
+        if(cpw.mods.fml.common.Loader.isModLoaded("appliedenergistics2"))saveAE();
+        nbt.setTag("aePowerNode",aeSaved);nbt.setBoolean("aeSecurityBlocked",aeSecurityBlocked);
+        nbt.setInteger("localRF",battery.stored());
         super.writeToNBT(nbt); nbt.setString("data", payload); nbt.setLong("revision", revision);
         nbt.setString("controller", controllerAddress);
         nbt.setByteArray("webPackage",webPackage.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         NBTTagCompound display=snapshot();for(Object key:display.func_150296_c()) {String k=(String)key;nbt.setTag(k,display.getTag(k));}
     }
     private void readDisplay(NBTTagCompound n) {
+        screenEnabled=!n.hasKey("screenEnabled")||n.getBoolean("screenEnabled");powered=n.getBoolean("powered");
+        brightness=n.hasKey("brightness")?PanelPower.brightness(n.getInteger("brightness")):100;
+        rfStored=Math.max(0,n.getInteger("rfStored"));rfCapacity=Math.max(0,n.getInteger("rfCapacity"));rfPerTick=Math.max(0,n.getInteger("rfPerTick"));
+        ocStored=Math.max(0,n.getDouble("ocStored"));ocCapacity=Math.max(0,n.getDouble("ocCapacity"));
         app=n.hasKey("app")?n.getString("app"):"welcome";layout=n.hasKey("layout")?n.getString("layout"):AppModel.WELCOME;values=n.hasKey("values")?n.getString("values"):"{}";
         wallWidth=Math.max(1,Math.min(8,n.getInteger("wallWidth")));wallHeight=Math.max(1,Math.min(6,n.getInteger("wallHeight")));
         column=Math.max(0,Math.min(wallWidth-1,n.getInteger("column")));row=Math.max(0,Math.min(wallHeight-1,n.getInteger("row")));masterX=n.getInteger("masterX");masterY=n.getInteger("masterY");masterZ=n.getInteger("masterZ");wallConfigured=n.hasKey("masterX");

@@ -21,12 +21,13 @@ public final class WebPanelGui extends GuiScreen {
     @Override public void initGui(){Keyboard.enableRepeatEvents(true);applyZoom();}
     @Override public void onGuiClosed(){if(pressed)mouse("up",Math.max(left,Math.min(left+w-1,lastX)),Math.max(top,Math.min(top+h-1,lastY)));Keyboard.enableRepeatEvents(false);if(frameLocation!=null)mc.getTextureManager().deleteTexture(frameLocation);frameLocation=null;frameTexture=null;}
     @Override public void drawScreen(int mouseX,int mouseY,float partial){
+        if(!tile.displayActive()){mc.displayGuiScreen(new ScreenSettingsGui(tile));return;}
         if(tile.isInvalid()||tile.getWorldObj()!=mc.theWorld||tile.master()!=tile||tile.distanceSq(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ)>64||!"web".equals(tile.app)){mc.displayGuiScreen(null);return;}
         drawDefaultBackground();viewport=new WebViewport(width,height,expanded);double scale=viewport.scale;w=viewport.width;h=viewport.height;left=viewport.left;top=viewport.top;
         if(frameLocation==null){BufferedImage image=FramePainter.paint();frameTexture=new DynamicTexture(image.getWidth(),image.getHeight());frameLocation=mc.getTextureManager().getDynamicTextureLocation("ochd-web-frame",frameTexture);image.getRGB(0,0,image.getWidth(),image.getHeight(),frameTexture.getTextureData(),0,image.getWidth());frameTexture.updateDynamicTexture();}
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);try{GL11.glEnable(GL11.GL_BLEND);GL11.glBlendFunc(GL11.GL_SRC_ALPHA,GL11.GL_ONE_MINUS_SRC_ALPHA);GL11.glEnable(GL11.GL_TEXTURE_2D);GL11.glDisable(GL11.GL_DEPTH_TEST);GL11.glDisable(GL11.GL_LIGHTING);GL11.glColor4f(1,1,1,1);mc.getTextureManager().bindTexture(frameLocation);double border=24*scale;Tessellator f=Tessellator.instance;f.startDrawingQuads();f.setColorOpaque_F(1,1,1);f.addVertexWithUV(left-border,top+h+border,0,0,1);f.addVertexWithUV(left+w+border,top+h+border,0,1,1);f.addVertexWithUV(left+w+border,top-border,0,1,0);f.addVertexWithUV(left-border,top-border,0,0,0);f.draw();}finally{GL11.glPopAttrib();}
         WebScreens.View view=WebScreens.get(tile,true);if(view!=null)view.zoom(zoom/100.0);
-        if(view!=null&&view.location()!=null){GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);try{mc.getTextureManager().bindTexture(view.location());GL11.glEnable(GL11.GL_TEXTURE_2D);GL11.glDisable(GL11.GL_LIGHTING);GL11.glDisable(GL11.GL_DEPTH_TEST);GL11.glColor4f(1,1,1,1);Tessellator t=Tessellator.instance;t.startDrawingQuads();t.setColorOpaque_F(1,1,1);t.addVertexWithUV(left,top+h,0,0,1);t.addVertexWithUV(left+w,top+h,0,1,1);t.addVertexWithUV(left+w,top,0,1,0);t.addVertexWithUV(left,top,0,0,0);t.draw();}finally{GL11.glPopAttrib();}}
+        if(view!=null&&view.location()!=null){GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);try{mc.getTextureManager().bindTexture(view.location());GL11.glEnable(GL11.GL_TEXTURE_2D);GL11.glDisable(GL11.GL_LIGHTING);GL11.glDisable(GL11.GL_DEPTH_TEST);GL11.glColor4f(1,1,1,1);Tessellator t=Tessellator.instance;t.startDrawingQuads();float bright=tile.displayBrightness();t.setColorOpaque_F(bright,bright,bright);t.addVertexWithUV(left,top+h,0,0,1);t.addVertexWithUV(left+w,top+h,0,1,1);t.addVertexWithUV(left+w,top,0,1,0);t.addVertexWithUV(left,top,0,0,0);t.draw();}finally{GL11.glPopAttrib();}}
         else drawCenteredString(fontRendererObj,view==null?"等待网页显示资源":view.error,width/2,height/2,0xFFFFFF);
         drawCenteredString(fontRendererObj,!tile.online?"OC离线 · 当前数据可能已过期":view!=null&&!view.error.isEmpty()?view.error:"Ctrl+滚轮缩放 · F6全屏 · Ctrl+V粘贴 · Esc返回",width/2,height-12,0xD8E1F4);
         drawTabs(mouseX,mouseY);
@@ -38,15 +39,15 @@ public final class WebPanelGui extends GuiScreen {
         for(int i=0;i<6;i++){
             int x=viewport.tabLeft(i),y=viewport.tabTop-(i==hover?2:0),width=WebViewport.TAB_WIDTHS[i],bottom=viewport.frameTop+1;
             drawRect(x+2,y,x+width-2,bottom,0xFF26334A);drawRect(x,y+3,x+width,bottom,0xFF26334A);
-            drawRect(x+2,y+2,x+width-2,bottom-2,0xFF9EADC4);drawRect(x+3,y+3,x+width-3,bottom-2,i==hover?0xFFE3ECFF:0xFFF3F6FC);
-            drawRect(x+4,y+3,x+width-4,y+5,0xFFFFFFFF);drawRect(x+width-4,y+5,x+width-2,bottom-2,0xFF8C9BB4);
-            if(i==hover)drawRect(x+5,y+6,x+width-5,y+8,0xFF6688FF);
-            int cy=y+13,color=0xFF4265B4;
+            drawRect(x+2,y+2,x+width-2,bottom-2,0xFF56647D);drawRect(x+3,y+3,x+width-3,bottom-2,i==hover?0xFF3B4D69:0xFF272F40);
+            drawRect(x+4,y+3,x+width-4,y+5,0xFF77869E);drawRect(x+width-4,y+5,x+width-2,bottom-2,0xFF111722);
+            if(i==hover)drawRect(x+5,y+6,x+width-5,y+8,0xFF22BDB8);
+            int cy=y+13,color=0xFFB7D6ED;
             if(i==0){int cx=x+width/2;for(int dx:new int[]{-7,3})for(int dy:new int[]{-6,3}){drawRect(cx+dx,cy+dy,cx+dx+5,cy+dy+2,color);drawRect(cx+(dx<0?-7:6),cy+dy,cx+(dx<0?-5:8),cy+dy+5,color);}}
             else if(i==5){int cx=x+width/2;drawRect(cx-6,cy,cx+7,cy+2,color);for(int k=0;k<5;k++)drawRect(cx-7+k,cy-k,cx-5+k,cy+3+k,color);}
-            else fontRendererObj.drawString(labels[i],x+(width-fontRendererObj.getStringWidth(labels[i]))/2,cy-3,0x4265B4);
+            else fontRendererObj.drawString(labels[i],x+(width-fontRendererObj.getStringWidth(labels[i]))/2,cy-3,0xB7D6ED);
         }
-        if(hover>=0){String text=tips[hover];int x=Math.min(width-fontRendererObj.getStringWidth(text)-14,Math.max(4,mouseX+8)),y=viewport.frameTop+4;drawRect(x,y,x+fontRendererObj.getStringWidth(text)+10,y+17,0xF5F3F6FC);fontRendererObj.drawString(text,x+5,y+5,0x4265B4);}
+        if(hover>=0){String text=tips[hover];int x=Math.min(width-fontRendererObj.getStringWidth(text)-14,Math.max(4,mouseX+8)),y=viewport.frameTop+4;drawRect(x,y,x+fontRendererObj.getStringWidth(text)+10,y+17,0xF5272F40);fontRendererObj.drawString(text,x+5,y+5,0xB7D6ED);}
     }
 
     private void applyZoom(){WebScreens.View v=WebScreens.get(tile,true);if(v!=null)v.zoom(zoom/100.0);}

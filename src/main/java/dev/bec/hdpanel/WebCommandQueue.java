@@ -15,7 +15,7 @@ public final class WebCommandQueue {
     public WebCommandQueue(int capacity){if(capacity<8)throw new IllegalArgumentException();this.capacity=capacity;}
     private static String key(JsonObject c){
         String type=c.get("type").getAsString();
-        if(type.equals("snapshot")||type.equals("data")||type.equals("zoom"))return type;
+        if(type.equals("snapshot")||type.equals("data")||type.equals("zoom")||type.equals("stream"))return type;
         return type.equals("input")&&c.has("kind")&&c.get("kind").getAsString().equals("move")?"move":null;
     }
     public synchronized boolean offer(JsonObject c){

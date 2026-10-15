@@ -22,6 +22,7 @@ public final class WebScreens {
     public static void receive(WebAssetPacket packet){RECEIVED.offer(packet);}
     public static View get(PanelTile tile,boolean gui){
         tile=tile.master();long now=System.currentTimeMillis();
+        if(!tile.displayActive()){if(current!=null&&current.tile==tile)close();return null;}
         if(current==null||current.tile!=tile){if(current!=null&&!gui&&now-current.lastUsed<5000)return null;close();current=new View(tile);}
         current.lastUsed=now;try{current.refresh(gui);}catch(RuntimeException e){current.error="网页数据暂时无效："+e.getClass().getSimpleName();}return current;
     }
@@ -36,17 +37,19 @@ public final class WebScreens {
         }
         long now=System.currentTimeMillis();Iterator<Map.Entry<String,Long>> it=REQUESTS.entrySet().iterator();while(it.hasNext()){Map.Entry<String,Long> e=it.next();if(now-e.getValue()>10000){CHUNKS.remove(e.getKey());it.remove();}}
         if(current==null)return;Minecraft mc=Minecraft.getMinecraft();PanelTile tile=current.tile;
-        if(mc.theWorld==null||tile.isInvalid()||tile.getWorldObj()!=mc.theWorld||!"web".equals(tile.app)||now-current.lastUsed>15000){close();return;}
+        if(mc.theWorld==null||tile.isInvalid()||tile.getWorldObj()!=mc.theWorld||!"web".equals(tile.app)||!tile.displayActive()||now-current.lastUsed>15000){close();return;}
         if(current.host!=null){JsonObject event;for(int i=0;i<4&&(event=current.host.events.poll())!=null;i++)current.event(event);}
+        if(current.host!=null&&now-current.lastUsed>500&&current.sentFps!=0){JsonObject cmd=new JsonObject();cmd.addProperty("type","stream");cmd.addProperty("fps",0);if(current.host.send(cmd))current.sentFps=0;}
     }
     public static void reply(ActionReplyPacket reply){if(current!=null&&reply.x==current.tile.xCoord&&reply.y==current.tile.yCoord&&reply.z==current.tile.zCoord)current.reply(reply);}
     public static final class View {
         public final PanelTile tile;private WebHostProcess host;private String hash="",lastValues="",loaded="";private boolean lastOnline;private double zoom=1,sentZoom=-1;
-        private DynamicTexture texture;private ResourceLocation location;private long lastUsed,lastSnapshot,lastLoadTry,lastEvent;private int pending,browserRequest;
+        private DynamicTexture texture;private ResourceLocation location;private long lastUsed,lastGui,lastLoadTry,lastEvent;private int pending,browserRequest,sentFps=-1;
         public String error="正在下载页面包…";
         private View(PanelTile tile){this.tile=tile;}
         public ResourceLocation location(){return location;}
         private void refresh(boolean gui){
+            long useTime=System.currentTimeMillis();if(gui)lastGui=useTime;
             JsonObject descriptor;try{descriptor=new JsonParser().parse(tile.layout).getAsJsonObject();hash=descriptor.get("hash").getAsString();if(!hash.matches("[0-9a-f]{64}"))return;}catch(RuntimeException e){error="页面描述无效";return;}
             long now=System.currentTimeMillis();String source=CACHE.get(hash);
             if(source==null){if(!REQUESTS.containsKey(hash)){REQUESTS.put(hash,now);HdPanelMod.NETWORK.sendToServer(new WebAssetRequest(tile,hash));}return;}
@@ -54,18 +57,19 @@ public final class WebScreens {
             if(sentZoom!=zoom){JsonObject z=new JsonObject();z.addProperty("type","zoom");z.addProperty("value",zoom);if(host.send(z))sentZoom=zoom;}
             if(!loaded.equals(hash)){JsonObject cmd=new JsonObject();cmd.addProperty("type","load");cmd.add("package",new JsonParser().parse(source));if(host.send(cmd)){loaded=hash;lastValues="";pending=0;}}
             if(!lastValues.equals(tile.values)||lastOnline!=tile.online){JsonObject cmd=new JsonObject();cmd.addProperty("type","data");JsonObject data=new JsonParser().parse(tile.values).getAsJsonObject();data.addProperty("_online",tile.online);cmd.add("data",data);if(host.send(cmd)){lastValues=tile.values;lastOnline=tile.online;}}
-            if(now-lastSnapshot>=(gui?16:500)){JsonObject cmd=new JsonObject();cmd.addProperty("type","snapshot");if(host.send(cmd))lastSnapshot=now;}
+            int fps=now-lastGui<250?60:30;
+            if(sentFps!=fps){JsonObject cmd=new JsonObject();cmd.addProperty("type","stream");cmd.addProperty("fps",fps);if(host.send(cmd))sentFps=fps;}
             BufferedImage image=host.frame.getAndSet(null);if(image!=null){if(texture==null){texture=new DynamicTexture(1920,1080);location=Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("ochd-html",texture);}if(image.getType()==BufferedImage.TYPE_INT_ARGB)System.arraycopy(((java.awt.image.DataBufferInt)image.getRaster().getDataBuffer()).getData(),0,texture.getTextureData(),0,1920*1080);else image.getRGB(0,0,1920,1080,texture.getTextureData(),0,1920);texture.updateDynamicTexture();
                 Minecraft.getMinecraft().getTextureManager().bindTexture(location);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_LINEAR);GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_LINEAR);}
-            error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";sentZoom=-1;error="网页运行时无响应，已关闭；稍后重试";}
+            error=host.error;if(now-host.lastMessage>20000){host.close();host=null;loaded="";sentZoom=-1;sentFps=-1;error="网页运行时无响应，已关闭；稍后重试";}
         }
         public void zoom(double value){if(!Double.isNaN(value)&&!Double.isInfinite(value))zoom=Math.max(.5,Math.min(2.5,value));}
-        public void input(JsonObject command){if(host!=null){command.addProperty("type","input");lastSnapshot=0;if(!host.send(command))error="输入繁忙，请稍后重试";}}
+        public void input(JsonObject command){if(host!=null&&tile.displayActive()){command.addProperty("type","input");if(!host.send(command))error="输入繁忙，请稍后重试";}}
         private void event(JsonObject e){
             try{int request=e.get("request").getAsInt();if(request<=0)return;
                 JsonObject packet=new JsonObject();packet.addProperty("hash",hash);packet.add("event",e.get("event"));packet.add("args",e.get("args"));
                 Minecraft mc=Minecraft.getMinecraft();boolean focused=mc.currentScreen instanceof WebPanelGui&&((WebPanelGui)mc.currentScreen).tile==tile;
-                if(!focused||!tile.online||pending!=0||System.currentTimeMillis()-lastEvent<250||!WebAppModel.event(tile.layout,packet.toString())){ack(request,false,"页面离线、非交互状态或仍有请求待确认");return;}
+                if(!focused||!tile.displayActive()||!tile.online||pending!=0||System.currentTimeMillis()-lastEvent<250||!WebAppModel.event(tile.layout,packet.toString())){ack(request,false,"页面离线、非交互状态或仍有请求待确认");return;}
                 lastEvent=System.currentTimeMillis();browserRequest=request;pending=new java.util.Random().nextInt(Integer.MAX_VALUE-1)+1;HdPanelMod.NETWORK.sendToServer(ActionPacket.web(tile,pending,packet.toString()));
             }catch(RuntimeException ignored){}
         }

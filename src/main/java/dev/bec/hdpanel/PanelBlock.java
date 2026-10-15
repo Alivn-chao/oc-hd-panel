@@ -45,11 +45,17 @@ public class PanelBlock extends BlockContainer {
     }
     @Override public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase entity, ItemStack stack) {
         world.setBlockMetadataWithNotify(x, y, z,PanelFacing.placed(entity.rotationYaw),2);
+        if(!world.isRemote&&entity instanceof EntityPlayer&&cpw.mods.fml.common.Loader.isModLoaded("appliedenergistics2")){
+            TileEntity tile=world.getTileEntity(x,y,z);if(tile instanceof PanelTile)((PanelTile)tile).aeOwner((EntityPlayer)entity);
+        }
     }
     @Override public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player,
             int side, float hitX, float hitY, float hitZ) {
         TileEntity tile = world.getTileEntity(x, y, z);
-        if (world.isRemote && tile instanceof PanelTile) HdPanelMod.proxy.open((PanelTile) tile);
+        if (world.isRemote && tile instanceof PanelTile) {
+            if(side==PanelFacing.front(world.getBlockMetadata(x,y,z)))HdPanelMod.proxy.open((PanelTile) tile);
+            else HdPanelMod.proxy.openSettings((PanelTile)tile);
+        }
         return true;
     }
 }

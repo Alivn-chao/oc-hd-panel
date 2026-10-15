@@ -30,6 +30,7 @@ public class PanelGui extends GuiScreen {
     private final ImageTexture modalTexture=new ImageTexture(), statusTexture=new ImageTexture(),frameTexture=new ImageTexture();
     public PanelGui(PanelTile tile) { this.tile = tile.master(); }
     private boolean bec() {return "bec_dashboard".equals(tile.app);}
+    private void dim(){int alpha=Math.round((1-tile.displayBrightness())*255);if(alpha>0)drawRect(0,0,1280,720,alpha<<24);}
     @Override public boolean doesGuiPauseGame() { return false; }
     @Override public void initGui() { Keyboard.enableRepeatEvents(true);if(bindings!=null)bindings.setWorldAndResolution(mc,width,height); }
     @Override public void onGuiClosed() { if(bindings!=null)bindings.leave();if(cachedBindings!=null)cachedBindings.dispose();Keyboard.enableRepeatEvents(false); modalTexture.dispose(); statusTexture.dispose();frameTexture.dispose();modalVersion=-1;statusKey=""; }
@@ -64,6 +65,7 @@ public class PanelGui extends GuiScreen {
         t.addVertexWithUV(x+w,y,0,1,0); t.addVertexWithUV(x,y,0,0,0); t.draw();
     }
     @Override public void drawScreen(int mouseX, int mouseY, float partial) {
+        if(!tile.displayActive()){mc.displayGuiScreen(new ScreenSettingsGui(tile));return;}
         if(tile.isInvalid() || tile.master()!=tile || tile.getWorldObj()!=mc.theWorld || tile.distanceSq(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ)>64) {
             mc.displayGuiScreen(null); return;
         }
@@ -85,7 +87,7 @@ public class PanelGui extends GuiScreen {
         if(frameTexture.location==null)frameTexture.set(FramePainter.paint());
         quad(frameTexture.location,-24,-24,1328,768);drawRect(0,0,1280,720,0xFF0B101A);
         if(surface.location()!=null) quad(surface.location(),0,0,1280,720);
-        if(bindings!=null){bindings.tick();bindings.drawScreen(x,y,partial);GL11.glPopMatrix();GL11.glPopAttrib();drawViewButton(mouseX,mouseY);return;}
+        if(bindings!=null){bindings.tick();bindings.drawScreen(x,y,partial);dim();GL11.glPopMatrix();GL11.glPopAttrib();drawViewButton(mouseX,mouseY);return;}
         if(bec()&&surface.page==1) {
             int max=PanelInteraction.maxScroll(count),thumb=count>5?Math.max(30,270*5/count):270;
             int position=315+(max>0?surface.scroll*(270-thumb)/max:0);
@@ -133,7 +135,7 @@ public class PanelGui extends GuiScreen {
                 if(ui.focused && !ui.selected && System.currentTimeMillis()%1000<500) drawRect(326+caretWidth,369,328+caretWidth,396,0xFF6688FF);
             }
         }
-        GL11.glPopMatrix(); GL11.glPopAttrib();
+        dim();GL11.glPopMatrix(); GL11.glPopAttrib();
         drawViewButton(mouseX,mouseY);
         if(surface.location()==null) drawCenteredString(fontRendererObj,"Preparing HD panel...",width/2,height/2,0xFFFFFF);
         if(!surface.error.isEmpty()) drawCenteredString(fontRendererObj,"Render error: "+surface.error,width/2,height-15,0xFF7777);
@@ -145,6 +147,7 @@ public class PanelGui extends GuiScreen {
         fontRendererObj.drawString(label,width-39-fontRendererObj.getStringWidth(label)/2,6,0x245696);
     }
     @Override protected void mouseClicked(int x,int y,int button) {
+        if(!tile.displayActive())return;
         if(button==0&&x>=width-74&&x<width-4&&y>=2&&y<18){expanded=!expanded;return;}
         if(button!=0 || viewWidth<=0) return;
         int xx=px(x),yy=py(y);
