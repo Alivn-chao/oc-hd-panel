@@ -2,7 +2,9 @@
 
 Windows x64, Java 21 or 25. Replace the old OCHD JAR and extract the complete
 client ZIP into the Minecraft game directory (the directory containing mods/).
-The server uses only the mod JAR. Restart the client after replacing files.
+The server uses only the mod JAR. Update both client and server JARs to alpha8;
+Forge 1.7.10 checks mod versions even though the packet protocol is unchanged.
+Restart the client after replacing files.
 Existing OC Lua packages and the BEC V2 web page remain compatible.
 
 The isolated browser now uses JCEF/CEF 146 with GPU WebGL instead of JavaFX
