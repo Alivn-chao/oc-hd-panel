@@ -1,0 +1,30 @@
+{
+  "jcefmaven.jar": {
+    "source": "https://repo.maven.apache.org/maven2/me/friwi/jcefmaven/146.0.10/jcefmaven-146.0.10.jar",
+    "sha256": "f8291948343e73b91af5fb7fa59001b5cd982922b2fdcfde6a28bbd3f758f5d3"
+  },
+  "jcef-api.jar": {
+    "source": "https://repo.maven.apache.org/maven2/me/friwi/jcef-api/jcef-d3de827+cef-146.0.10+g8219561+chromium-146.0.7680.179/jcef-api-jcef-d3de827+cef-146.0.10+g8219561+chromium-146.0.7680.179.jar",
+    "sha256": "b0271c8817cbdeb9e2e41420804d62e21c94acdf3b4d6072577fb19d546a4b08"
+  },
+  "jcef-natives.jar": {
+    "source": "https://repo.maven.apache.org/maven2/me/friwi/jcef-natives-windows-amd64/jcef-d3de827+cef-146.0.10+g8219561+chromium-146.0.7680.179/jcef-natives-windows-amd64-jcef-d3de827+cef-146.0.10+g8219561+chromium-146.0.7680.179.jar",
+    "sha256": "e9a2d4ef3c33b372c24655ee4cdaf9ef23fe2de5f7e57410576569977299c4b4"
+  },
+  "commons-compress.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-compress/1.28.0/commons-compress-1.28.0.jar",
+    "sha256": "e1522945218456f3649a39bc4afd70ce4bd466221519dba7d378f2141a4642ca"
+  },
+  "commons-io.jar": {
+    "source": "https://repo.maven.apache.org/maven2/commons-io/commons-io/2.20.0/commons-io-2.20.0.jar",
+    "sha256": "df90bba0fe3cb586b7f164e78fe8f8f4da3f2dd5c27fa645f888100ccc25dd72"
+  },
+  "commons-lang3.jar": {
+    "source": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-lang3/3.18.0/commons-lang3-3.18.0.jar",
+    "sha256": "4eeeae8d20c078abb64b015ec158add383ac581571cddc45c68f0c9ae0230720"
+  },
+  "gson.jar": {
+    "source": "https://repo.maven.apache.org/maven2/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar",
+    "sha256": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b"
+  }
+}

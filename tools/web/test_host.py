@@ -1,43 +1,4 @@
-import json,os,queue,struct,subprocess,threading,time,sys
-from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
-JAVA=Path(os.environ.get('OCHD_TEST_JAVA','C:/Program Files/Microsoft/jdk-21.0.9.10-hotspot/bin/java.exe'))
-cmd=[str(JAVA),'--module-path',str(ROOT/'web-runtime/lib'),'--add-modules','javafx.web,javafx.swing','-Dprism.order='+os.environ.get('OCHD_TEST_PRISM','sw'),'-Dochd.selftest=true','-cp',str(ROOT/'build/web-host.jar')+os.pathsep+str(ROOT/'web-runtime/lib/gson.jar'),'dev.bec.hdweb.Host']
-process=subprocess.Popen(cmd,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0));events=queue.Queue()
-def read_exact(n):
- data=b''
- while len(data)<n:
-  part=process.stdout.read(n-len(data))
-  if not part:raise EOFError('host closed')
-  data+=part
- return data
-def reader():
- try:
-  while True:
-   typ=read_exact(1)[0];n=struct.unpack('>I',read_exact(4))[0];assert n<12000000
-   data=read_exact(n);typ=1 if typ==3 else typ;events.put((typ,json.loads(data)if typ==2 else data))
- except Exception as e:events.put(('error',str(e)))
-threading.Thread(target=reader,daemon=True).start()
-def send(value):process.stdin.write(json.dumps(value,ensure_ascii=False).encode()+b'\n');process.stdin.flush()
-deferred=[]
-def wait(wanted,timeout=20):
- for i,(typ,obj) in enumerate(deferred):
-  if (wanted=='frame'and typ==1)or(typ==2 and obj.get('type')==wanted):deferred.pop(i);return obj
- deadline=time.monotonic()+timeout
- while time.monotonic()<deadline:
-  typ,obj=events.get(timeout=max(.1,deadline-time.monotonic()))
-  if typ=='error':raise RuntimeError(obj)
-  if typ==2 and obj.get('type')=='error':raise RuntimeError(obj)
-  if (wanted=='frame'and typ==1)or(typ==2 and obj.get('type')==wanted):return obj
-  deferred.append((typ,obj))
- raise TimeoutError(wanted)
-def evaluate(script):send({'type':'eval','script':script});return wait('eval')['message']
-def as_png(data):
- if data[:8]==b'\x89PNG\r\n\x1a\n':return data
- import zlib,io
- from PIL import Image
- w,h=struct.unpack('>II',data[:8]);raw=zlib.decompress(data[8:]);assert len(raw)==w*h*4
- output=io.BytesIO();Image.frombytes('RGBA',(w,h),raw,'raw','ARGB').save(output,format='PNG');return output.getvalue()
+from host_harness import *
 
 try:
  wait('started')
@@ -105,7 +66,7 @@ try:
  send({'type':'snapshot'});png=as_png(wait('frame'));assert png[:8]==b'\x89PNG\r\n\x1a\n'
  assert struct.unpack('>II',png[16:24])==(1920,1080)
  (ROOT/'build/web-host-preview.png').write_bytes(png)
- print('PASS: actual WebKit HTML/CSS/JS, OC data/event/ack, paste, range drag, raw input saturation followed by click, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
+ print('PASS: actual '+('Chromium' if CEF else 'WebKit')+' HTML/CSS/JS, OC data/event/ack, paste, range drag, raw input saturation followed by click, zoom/reset with matching mouse clicks, SVG/canvas and 1080p PNG')
 finally:
  try:send({'type':'close'});process.wait(timeout=5)
  except Exception:process.kill()

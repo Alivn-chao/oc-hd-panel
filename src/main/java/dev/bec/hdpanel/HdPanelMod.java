@@ -11,7 +11,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.4.0-alpha7-html",
+@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.4.0-alpha8-chromium",
     dependencies = "required-after:OpenComputers@[1.12.61-GTNH,)", acceptedMinecraftVersions = "[1.7.10]")
 public class HdPanelMod {
     public static final String ID = "ochdpanel";

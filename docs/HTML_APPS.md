@@ -1,3 +1,7 @@
+# alpha8 Chromium 更新
+
+Windows x64 完整客户端现使用 Chromium / CEF，原生 1080p、WebGL GPU 渲染、右键/中键拖动及双缓冲共享内存传帧。默认缩放100%。安装、重建、边界与验证详见 [CHROMIUM.md](CHROMIUM.md)。下文的 JavaFX 说明仅适用于 alpha5–alpha7 旧运行时。
+
 # OCHD HTML 应用原型 · 0.4.0-alpha7
 
 alpha7 的多能源供电及 alpha6 的刷新、亮度与开关行为见 [屏幕设置说明](DISPLAY_POWER.md)。alpha5 的 Lua 和页面包保持兼容。

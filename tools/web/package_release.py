@@ -4,7 +4,7 @@ import zipfile
 
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'build/distributions'
-MOD=OUT/'oc-hd-panel-0.4.0-alpha7-html.jar'
+MOD=OUT/'oc-hd-panel-0.4.0-alpha8-chromium.jar'
 assert MOD.exists()
 DEMO=OUT/'ochd-html-demo.zip'
 with zipfile.ZipFile(DEMO,'w',zipfile.ZIP_DEFLATED)as z:

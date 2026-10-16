@@ -1,3 +1,5 @@
+> alpha8 Chromium：新增 Chromium/CEF GPU WebGL、原生1080p、右键/中键拖动和共享内存传帧。详见 [安装及技术说明](docs/CHROMIUM.md)。旧 Lua/页面兼容。
+
 # OCHD HTML 屏幕 · alpha7
 
 新增：[RF/EU/OC/AE 供电、连续刷新与屏幕设置](docs/DISPLAY_POWER.md)。基于 `v0.4.0-alpha5-html`，顶部控件改为机壳同色深蓝灰。客户端与服务器需一起更新，客户端同时更新浏览器运行时。
