@@ -1,0 +1,18 @@
+{
+  "id": "neon-yield",
+  "title": "NEON YIELD \u00b7 HTML compatibility lab",
+  "entry": "index.html",
+  "files": [
+    "index.html",
+    "style.css",
+    "main.js",
+    "OFL.txt",
+    "FONT-NOTICE.txt"
+  ],
+  "events": [
+    "demo_connect",
+    "demo_disconnect",
+    "demo_deposit",
+    "echo_ping"
+  ]
+}

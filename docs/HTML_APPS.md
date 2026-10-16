@@ -160,3 +160,19 @@ HTML交互窗口复用原alpha4的FramePainter金属外框，边框在页面外�
 | alpha5 后台无损像素/Direct3D优先 | 32.26ms | 36.93ms |
 
 这是本机离屏测试，不能当成所有玩家机器的性能保证。需同时更新JAR与运行时；原Lua和页面包可继续使用。
+
+## NEON YIELD 兼容性页面
+
+[页面源码](../web-apps/defi-yield/README.md) · [预览](defi-yield-preview.png)
+
+基于用户给定DeFi prompt和截图，包含青色网格、青紫渐变、霓虹辉光、APY计算器/滑块、资金池筛选/搜索/收藏、Canvas/SVG、模拟钱包/存入、真实OC数据回传。自包含静态字体，不依赖外网资源。现有alpha5直接使用，无需更换JAR。
+
+先在旧示例的OC终端按Q退出，再执行：
+
+```sh
+wget -f https://fastly.jsdelivr.net/gh/Alivn-chao/oc-hd-panel@defi-yield-page-v1/oc/install_defi_yield.lua /home/ochd_install_defi.lua
+lua /home/ochd_install_defi.lua
+lua /home/ochd_defi_yield.lua
+```
+
+安装在独立 `/home/ochd_apps/defi-yield`，不覆盖原示例。市场/钱包/余额均为模拟，OC运行时间/内存为实际数据。测试覆盖真实WebKit渲染/交互与Lua52协议验证，尚未GTNH实机验收。
