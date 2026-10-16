@@ -86,3 +86,32 @@ Upstream:
 - https://github.com/jcefmaven/jcefmaven/releases/tag/146.0.10
 - https://github.com/chromiumembedded/java-cef
 - https://github.com/chromiumembedded/cef
+
+## alpha8 input fix 1 (2026-10-17)
+
+The client-only runtime patch fixes Backspace/Delete, Ctrl+A and native insertion
+focus, and restores the wheel direction and useful scrolling distance. JCEF's
+Windows JNI reads `KeyEvent.scancode`; manually constructed events previously
+left it zero, producing an Unidentified key. `BrowserKeyEvent` supplies a real
+Set-1 scan without reflection or opening JDK modules. JCEF also interprets AWT
+wheel units as CEF pixels; the old three units became about two CSS pixels with
+the opposite wheel sign. A legacy OC notch now scrolls about 150 CSS pixels in
+the actual CEF test. Up moves the page up, down moves it down.
+
+For an existing alpha8 Chromium install: exit Minecraft, back up
+`ochd-web-runtime/cef-host.jar`, and extract `ochd-input-fix1-client.zip` into
+the game directory, replacing that one file. Restart the client. The mod JAR,
+server files and OC machine data do not change. This patch does not convert
+alpha7 WebKit; install the matching full alpha8 client/server version first.
+
+The BEC page separately uses in-texture DOM dropdowns because native popup
+windows are not painted into the offscreen view. Update that HTML with BEC's
+`reinstall_v2/update_web.lua`. It adds clear buttons/focus highlighting and
+normalizes model wheel zoom independently of document scrolling.
+
+Actual CEF regressions `test_editing.py` and `test_bec_editing.py` cover native
+Backspace/Delete/Ctrl+A, focus/caret style, clearing a binding, mouse and keyboard
+selection in the visible dropdown, page scroll direction/distance and model zoom.
+These are isolated client-runtime tests, not a Minecraft hardware acceptance.
+
+Upstream mapping reference: https://github.com/chromiumembedded/java-cef/blob/master/native/CefBrowser_N.cpp

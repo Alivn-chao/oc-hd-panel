@@ -134,15 +134,23 @@ public final class CefHost {
             String key=c.get("key").getAsString();if(key.startsWith("DIGIT"))key=key.substring(5);
             int code;try{code=KeyEvent.class.getField("VK_"+key).getInt(null);}catch(Exception e){code=KeyEvent.VK_UNDEFINED;}
             String ch=c.has("character")?c.get("character").getAsString():"";char character=ch.isEmpty()?KeyEvent.CHAR_UNDEFINED:ch.charAt(0);
-            browser.key(new KeyEvent(browser.getUIComponent(),KeyEvent.KEY_PRESSED,now,modifiers,code,character));
-            if(!ch.isEmpty()&&!flag(c,"ctrl")&&!flag(c,"alt"))browser.key(new KeyEvent(browser.getUIComponent(),KeyEvent.KEY_TYPED,now,modifiers,KeyEvent.VK_UNDEFINED,character));
-            browser.key(new KeyEvent(browser.getUIComponent(),KeyEvent.KEY_RELEASED,now,modifiers,code,character));return;
+            int scan=c.has("scan")?c.get("scan").getAsInt():0;browser.setFocus(true);
+            browser.key(new BrowserKeyEvent(browser.getUIComponent(),KeyEvent.KEY_PRESSED,now,modifiers,code,character,scan));
+            if(!ch.isEmpty()&&!flag(c,"ctrl")&&!flag(c,"alt"))browser.key(new BrowserKeyEvent(browser.getUIComponent(),KeyEvent.KEY_TYPED,now,modifiers,KeyEvent.VK_UNDEFINED,character,scan));
+            browser.key(new BrowserKeyEvent(browser.getUIComponent(),KeyEvent.KEY_RELEASED,now,modifiers,code,character,scan));return;
         }
         int x=c.get("x").getAsInt(),y=c.get("y").getAsInt();
-        if(kind.equals("wheel")){browser.wheel(new MouseWheelEvent(browser.getUIComponent(),MouseEvent.MOUSE_WHEEL,now,modifiers|buttons,x,y,0,false,MouseWheelEvent.WHEEL_UNIT_SCROLL,3,c.get("delta").getAsDouble()>0?-1:1));return;}
+        if(kind.equals("wheel")){
+            double delta=c.get("delta").getAsDouble();if(delta==0||!Double.isFinite(delta))return;
+            // JCEF sends AWT units directly as CEF pixels (not Windows wheel
+            // notches). Match the 1.5x viewport: one legacy OC notch (80) is
+            // 180 CEF units (about 120-150 CSS pixels), with Chromium's wheel sign.
+            int amount=(int)Math.max(1,Math.min(1080,Math.round(Math.abs(delta)*2.25)));
+            browser.wheel(new MouseWheelEvent(browser.getUIComponent(),MouseEvent.MOUSE_WHEEL,now,modifiers|buttons,x,y,0,false,MouseWheelEvent.WHEEL_UNIT_SCROLL,amount,delta>0?1:-1));return;
+        }
         int index=c.has("button")?c.get("button").getAsInt():0;if(index<0||index>2)return;
         int button=index==0?MouseEvent.BUTTON1:index==1?MouseEvent.BUTTON3:MouseEvent.BUTTON2,mask=InputEvent.getMaskForButton(button);
-        boolean down=kind.equals("down"),up=kind.equals("up");if(down)buttons|=mask;if(up)buttons&=~mask;
+        boolean down=kind.equals("down"),up=kind.equals("up");if(down){browser.setFocus(true);buttons|=mask;}if(up)buttons&=~mask;
         int id=down?MouseEvent.MOUSE_PRESSED:up?MouseEvent.MOUSE_RELEASED:buttons!=0?MouseEvent.MOUSE_DRAGGED:MouseEvent.MOUSE_MOVED;
         browser.mouse(new MouseEvent(browser.getUIComponent(),id,now,modifiers|buttons,x,y,down||up?1:0,false,down||up?button:MouseEvent.NOBUTTON));
     }
