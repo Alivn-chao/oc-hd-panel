@@ -1,11 +1,21 @@
 # Chromium / CEF runtime (alpha8)
 
 Windows x64, Java 21 or 25. Replace the old OCHD JAR and extract the complete
-client ZIP into the Minecraft game directory (the directory containing mods/).
+complete offline client ZIP into the Minecraft game directory (the directory containing mods/).
+The small GitHub setup ZIP is an alternative: extract it into the same game
+directory, then run install-chromium.bat before starting Minecraft. Installation
+downloads the pinned official 162 MB native bundle from Maven and checks its
+SHA256 and every extracted native file. No download occurs at game launch.
+The setup script refuses a running game, preserves old mods outside mods/, and
+leaves old native files in a backup if replacement is needed.
 The server uses only the mod JAR. Update both client and server JARs to alpha8;
 Forge 1.7.10 checks mod versions even though the packet protocol is unchanged.
 Restart the client after replacing files.
 Existing OC Lua packages and the BEC V2 web page remain compatible.
+
+The setup installer was also tested with an invalid native archive (old mod
+preserved), verified cached extraction, old-mod backup and an idempotent second
+run. It can use -NativeArchive for an already-downloaded, hash-checked archive.
 
 The isolated browser now uses JCEF/CEF 146 with GPU WebGL instead of JavaFX
 WebKit. Each client renders its own page locally. No browser downloads happen
