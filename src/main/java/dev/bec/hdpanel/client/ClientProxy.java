@@ -12,10 +12,12 @@ import net.minecraft.client.Minecraft;
 public class ClientProxy extends CommonProxy {
     private int ticks;
     private final ArrayBlockingQueue<ActionReplyPacket> replies = new ArrayBlockingQueue<ActionReplyPacket>(32);
+    @Override public void receiveMcp(dev.bec.hdpanel.mcp.McpPacket.Reply reply) { McpClientBridge.reply(reply); }
     @Override public void receiveWebAsset(dev.bec.hdpanel.WebAssetPacket packet){WebScreens.receive(packet);}
     @Override public void receiveReply(ActionReplyPacket reply) { replies.offer(reply); }
     @Override public void init() {
         super.init();
+        McpClientBridge.start();
         ClientRegistry.bindTileEntitySpecialRenderer(PanelTile.class, new PanelRenderer());
     }
     @Override public void open(PanelTile tile) { if(!tile.displayActive()){openSettings(tile);return;}Minecraft.getMinecraft().displayGuiScreen("web".equals(tile.master().app)?new WebPanelGui(tile):new PanelGui(tile)); }
@@ -30,6 +32,7 @@ public class ClientProxy extends CommonProxy {
             else if(Minecraft.getMinecraft().currentScreen instanceof BindingGui)
                 ((BindingGui)Minecraft.getMinecraft().currentScreen).receive(reply);
         }
+        McpClientBridge.tick();
         WebScreens.tick();
         if (++ticks % 40 == 0) PanelSurfaces.prune();
     }

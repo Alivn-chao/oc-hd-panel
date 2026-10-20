@@ -6,6 +6,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
 public class CommonProxy {
+    public void receiveMcp(dev.bec.hdpanel.mcp.McpPacket.Reply reply) { }
     public void receiveReply(ActionReplyPacket reply) { }
     public void receiveWebAsset(WebAssetPacket packet) { }
     private static final ConcurrentLinkedQueue<Runnable> TASKS = new ConcurrentLinkedQueue<Runnable>();

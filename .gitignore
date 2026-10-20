@@ -13,3 +13,5 @@ bec_hd.config
 *.hd.new.*
 /build-tools/
 /web-runtime/lib/
+
+ochd-mcp-client.json

@@ -1,3 +1,13 @@
+# OCHD 0.5.0-alpha1 · MCP 接入机箱
+
+新增独立 **MCP 接入机箱**（不占 OC 卡槽）与默认 **64 MiB 大容量硬盘**。通过已登录的游戏客户端，让 MCP 读取 OC 状态、组件、日志和程序文件，并执行 OpenOS 命令。服务端不需要额外开放管理端口。
+
+[下载预览版](https://github.com/Alivn-chao/oc-hd-panel/releases/tag/v0.5.0-alpha1-mcp) · [安装、接口和限制](docs/MCP.md)
+
+基于 alpha8 input-fix1，保留 Chromium 屏幕和输入修复。**已编译和模拟测试，尚未完成 GTNH 联机实测。** 客户端和服务端需一起替换 jar，现有 alpha8 浏览器运行时继续使用。
+
+以下为历史版本说明：
+
 > alpha8 Chromium：新增 Chromium/CEF GPU WebGL、原生1080p、右键/中键拖动和共享内存传帧。详见 [安装及技术说明](docs/CHROMIUM.md)。旧 Lua/页面兼容。
 
 # OCHD HTML 屏幕 · alpha7

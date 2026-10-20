@@ -11,7 +11,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.4.0-alpha8-chromium",
+@Mod(modid = HdPanelMod.ID, name = "OC HD Panel", version = "0.5.0-alpha1-mcp",
     dependencies = "required-after:OpenComputers@[1.12.61-GTNH,)", acceptedMinecraftVersions = "[1.7.10]")
 public class HdPanelMod {
     public static final String ID = "ochdpanel";
@@ -28,7 +28,9 @@ public class HdPanelMod {
         PanelPower.maxReceive=config.getInt("maxReceive","power",4096,1,1000000,"Maximum RF accepted per connection call");
         PanelPower.fullBrightnessCost=config.getInt("rfPerBlockPerTick","power",16,1,10000,"RF/t per block at 100% brightness");
         PanelPower.euSinkTier=config.getInt("euSinkTier","power",4,1,14,"Maximum IC2 EU sink tier (4 = EV). OC converter input uses OC's own settings.");
+        dev.bec.hdpanel.mcp.McpHardware.diskBytes = config.getInt("diskMiB", "mcp", 64, 1, 1024, "Capacity of newly created OCHD disks in MiB") * 1048576L;
         if(config.hasChanged())config.save();
+        dev.bec.hdpanel.mcp.McpHardware.register();
         panel = new PanelBlock();
         GameRegistry.registerBlock(panel, "panel");
         GameRegistry.registerTileEntity(PanelTile.class, ID + ":panel");
@@ -39,6 +41,9 @@ public class HdPanelMod {
         NETWORK.registerMessage(WebAssetRequest.Handler.class,WebAssetRequest.class,2,Side.SERVER);
         NETWORK.registerMessage(WebAssetPacket.Handler.class,WebAssetPacket.class,3,Side.CLIENT);
         NETWORK.registerMessage(PanelSettingsPacket.Handler.class,PanelSettingsPacket.class,4,Side.SERVER);
+        NETWORK.registerMessage(dev.bec.hdpanel.mcp.McpPacket.ServerHandler.class, dev.bec.hdpanel.mcp.McpPacket.class, 5, Side.SERVER);
+        NETWORK.registerMessage(dev.bec.hdpanel.mcp.McpPacket.ClientHandler.class, dev.bec.hdpanel.mcp.McpPacket.Reply.class, 6, Side.CLIENT);
+        cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new dev.bec.hdpanel.mcp.McpPacket.ServerHandler());
         proxy.init();
     }
 }
