@@ -2,3 +2,5 @@ tile.ochdpanel.panel.name=OC HD Panel (1080p)
 
 item.ochd.disk.name=OCHD Large Hard Disk
 tile.ochd.mcpCase.name=OCHD MCP Interface Case
+tile.ochd.groupAdapter.name=OCHD 64-slot MFU Adapter
+ochd.groupAdapter.denied=Only the owner can configure this adapter.

@@ -13,6 +13,7 @@ public class CommonProxy {
     public void init() { FMLCommonHandler.instance().bus().register(this); }
     public void open(PanelTile tile) { }
     public void openSettings(PanelTile tile) { }
+    public Object groupAdapterGui(dev.bec.hdpanel.adapter.GroupAdapterContainer container) { return null; }
     public static void enqueue(Runnable task) { if (TASKS.size() < 128) TASKS.add(task); }
     @SubscribeEvent
     public void tick(TickEvent.ServerTickEvent event) {

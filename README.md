@@ -1,4 +1,12 @@
-# OCHD 0.5.0-alpha1 · MCP 接入机箱
+# OCHD 0.5.0-alpha4 · GTNH 2.9.0 正式版
+
+[MFU 适配器](docs/GROUP_ADAPTER.md)扩至 64 槽，新增 BEC 组状态读取、批量并行配额写入与接单控制接口。OC 可在同一条网络上枚举多块适配器。
+
+针对官方 `2.9.0` 标签更新构建依赖：OpenComputers `1.12.68-GTNH`、AE2 `rv3-beta-1095-GTNH`。保留 Chromium、屏幕供电、输入修复、MCP 接入机箱和大容量硬盘。客户端与服务端必须使用相同的新 JAR；沿用现有 Chromium 运行时。安装与验证范围见 [GTNH 2.9.0 适配说明](docs/GTNH_2.9.0.md)。
+
+已通过正式版依赖编译、56 项 Java 测试和 18 项 MCP/Python/Lua 测试；64 槽与 BEC 批量操作仍待游戏内实测。
+
+## 0.5.0-alpha1 · MCP 接入机箱
 
 新增独立 **MCP 接入机箱**（不占 OC 卡槽）与默认 **64 MiB 大容量硬盘**。通过已登录的游戏客户端，让 MCP 读取 OC 状态、组件、日志和程序文件，并执行 OpenOS 命令。服务端不需要额外开放管理端口。
 

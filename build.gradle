@@ -3,7 +3,7 @@ plugins {
     id 'com.gtnewhorizons.retrofuturagradle' version '2.0.5'
 }
 group = 'dev.bec.hdpanel'
-version = '0.5.0-alpha1-mcp'
+version = '0.5.0-alpha4-gtnh290'
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -20,8 +20,8 @@ repositories {
     maven { url = 'https://nexus.gtnewhorizons.com/repository/public/' }
 }
 dependencies {
-    compileOnly(rfg.deobf(project.files('libs/OpenComputers-1.12.61-GTNH.jar')))
-    compileOnly files('libs/CoFHCore.jar', 'libs/IC2.jar', 'libs/AE2.jar')
+    compileOnly(rfg.deobf(project.files('libs/OpenComputers-1.12.68-GTNH.jar')))
+    compileOnly files('libs/CoFHCore.jar', 'libs/IC2.jar', 'libs/AE2-rv3-beta-1095-GTNH-api.jar')
     testImplementation 'junit:junit:4.13.2'
 }
 tasks.withType(JavaCompile).configureEach {

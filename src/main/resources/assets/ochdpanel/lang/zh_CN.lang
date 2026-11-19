@@ -2,3 +2,5 @@ tile.ochdpanel.panel.name=OC 高清面板（1080p）
 
 item.ochd.disk.name=OCHD 大容量硬盘
 tile.ochd.mcpCase.name=OCHD MCP 接入机箱
+tile.ochd.groupAdapter.name=OCHD 64槽 MFU 适配器
+ochd.groupAdapter.denied=只有放置者可以配置这台适配器。
